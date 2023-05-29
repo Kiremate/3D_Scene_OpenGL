@@ -84,8 +84,50 @@ GLuint View::compile_shaders()
 	GLuint fragment_shader_id = glCreateShader(GL_FRAGMENT_SHADER);
 
 	// Load shader source code from files:
-	std::string vertex_shader_code = loadShaderSource("../../shared/assets/shaders/vertex_shader.glsl");
-	std::string fragment_shader_code = loadShaderSource("../../shared/assets/shaders/fragment_shader.glsl");
+	
+	// Vertex Shader
+	const std::string vertex_shader_code =
+		"#version 330 core\n"
+		"layout (location = 0) in vec3 aPos;\n"
+		"layout (location = 1) in vec3 aNormal;\n"
+		"out vec3 FragPos;\n"
+		"out vec3 Normal;\n"
+		"uniform mat4 model;\n"
+		"uniform mat4 view;\n"
+		"uniform mat4 projection;\n"
+		"void main()\n"
+		"{\n"
+		"    FragPos = vec3(model * vec4(aPos, 1.0));\n"
+		"    Normal = mat3(transpose(inverse(model))) * aNormal;\n"
+		"    gl_Position = projection * view * vec4(FragPos, 1.0);\n"
+		"}\n";
+
+	// Fragment Shader
+	const std::string fragment_shader_code =
+		"#version 330 core\n"
+		"out vec4 FragColor;\n"
+		"in vec3 Normal;\n"
+		"in vec3 FragPos;\n"
+		"uniform vec3 lightPos;\n"
+		"uniform vec3 lightColor;\n"
+		"uniform vec3 objectColor;\n"
+		"void main()\n"
+		"{\n"
+		"    float ambientStrength = 0.1;\n"
+		"    vec3 ambient = ambientStrength * lightColor;\n"
+		"    vec3 norm = normalize(Normal);\n"
+		"    vec3 lightDir = normalize(lightPos - FragPos);\n"
+		"    float diff = max(dot(norm, lightDir), 0.0);\n"
+		"    vec3 diffuse = diff * lightColor;\n"
+		"    float specularStrength = 0.5;\n"
+		"    vec3 viewDir = normalize(-FragPos);\n"
+		"    vec3 reflectDir = reflect(-lightDir, norm);\n"
+		"    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);\n"
+		"    vec3 specular = specularStrength * spec * lightColor;\n"
+		"    vec3 result = (ambient + diffuse + specular) * objectColor;\n"
+		"    FragColor = vec4(result, 1.0);\n"
+		"}\n";
+
 	// Safe check
 	if (vertex_shader_code.empty() || fragment_shader_code.empty()) {
 		std::cerr << "Failed to load shader source code from file." << std::endl;
@@ -171,8 +213,8 @@ void View::show_compilation_error(GLuint shader_id)
 
 void View::update()
 {
-	for (auto& mesh : meshes)
-		mesh.transform_vertices(camera, width, height);
+	//for (auto& mesh : meshes)
+		//mesh.transform_vertices(camera, width, height);
 }
 
 Camera& View::get_camera()
@@ -182,6 +224,7 @@ Camera& View::get_camera()
 
 void View::render()
 {
+	glEnable(GL_DEPTH_TEST);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	for (auto& mesh : meshes)
 	{
