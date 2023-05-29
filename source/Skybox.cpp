@@ -127,6 +127,7 @@ namespace example
     void Skybox::render(const Camera& camera)
     {
         glUseProgram(shader_program_id);
+        glDepthMask(GL_FALSE);
 
         texture_cube.bind();
 
@@ -145,6 +146,7 @@ namespace example
 
         glBindVertexArray(0);
         glUseProgram(0);
+        glDepthMask(GL_TRUE); // enable writing into the depth buffer again.
     }
 
     GLuint Skybox::compile_shaders()

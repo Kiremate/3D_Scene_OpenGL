@@ -22,7 +22,7 @@ namespace example
     private:
         Camera camera;
         Skybox skybox;
-
+        GLuint program_id;
         int    width;
         int    height;
 

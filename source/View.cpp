@@ -66,7 +66,7 @@ namespace example
 
         // Se compilan y se activan los shaders:
 
-        GLuint program_id = compile_shaders();
+        program_id = compile_shaders();
 
         glUseProgram(program_id);
 
@@ -115,7 +115,7 @@ namespace example
     void View::render()
     {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        skybox.render(camera);
+    
 
         // Se rota el malla y se empuja hacia el fondo:
 
@@ -127,12 +127,10 @@ namespace example
         glUniformMatrix4fv(model_view_matrix_id, 1, GL_FALSE, glm::value_ptr(model_view_matrix));
 
         // Se dibuja la malla:
-
+        skybox.render(camera);
+        glUseProgram(program_id);
         glBindVertexArray(vao_id);
         glDrawElements(GL_TRIANGLES, number_of_indices, GL_UNSIGNED_SHORT, 0);
-
-       // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
     }
 
     void View::resize(int width, int height)
