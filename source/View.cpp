@@ -50,8 +50,22 @@ View::View(float width, float height)
 	// Compile and use shaders
 	shaderProgram = compile_shaders();
 	glUseProgram(shaderProgram);
-}
 
+	// Initialize Camera
+	// Adjust the values here to fit your specific needs
+	float fov = 45.0f;
+	float near_plane = 0.1f;
+	float far_plane = 100.0f;
+	example::Vector3f position(0.0f, 0.0f, 0.0f);
+	example::Vector3f target(0.0f, 0.0f, -1.0f);
+	example::Vector3f up(0.0f, 1.0f, 0.0f);
+	camera = Camera(fov, near_plane, far_plane, position, target, up);
+	// Initialize Light
+	Color lightColor = { 1.0f, 1.0f, 1.0f }; // white light
+	light.position = camera.transform.position;
+	light.view = camera.view_direction;
+	light.color = lightColor;
+}
 View::~View()
 {
 	// Delete the VAO, VBO, and IBO
@@ -84,18 +98,46 @@ GLuint View::compile_shaders()
 	const std::string vertex_shader_code =
 		"#version 330 core\n"
 		"layout (location = 0) in vec3 aPos;\n"
+		"layout (location = 1) in vec3 aNormal;\n"
+		"uniform mat4 model;\n"
+		"uniform mat4 view;\n"
+		"uniform mat4 projection;\n"
+		"out vec3 FragPos;\n"
+		"out vec3 Normal;\n"
 		"void main()\n"
 		"{\n"
-		"   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+		"   FragPos = vec3(model * vec4(aPos, 1.0));\n"
+		"   Normal = mat3(transpose(inverse(model))) * aNormal;\n"
+		"   gl_Position = projection * view * vec4(FragPos, 1.0);\n"
 		"}";
 
 	const std::string fragment_shader_code =
 		"#version 330 core\n"
 		"out vec4 FragColor;\n"
+		"uniform vec3 lightPos;\n"
+		"uniform vec3 lightColor;\n"
+		"uniform vec3 viewPos;\n"
+		"uniform vec3 ambientColor;\n"
+		"in vec3 FragPos;\n"
+		"in vec3 Normal;\n"
 		"void main()\n"
 		"{\n"
-		"   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+		"   // Ambient lighting\n"
+		"   float ambientStrength = 0.1f;\n"
+		"   vec3 ambient = ambientStrength * ambientColor;\n"
+
+		"   // Diffuse lighting\n"
+		"   vec3 norm = normalize(Normal);\n"
+		"   vec3 lightDir = normalize(lightPos - FragPos);\n"
+		"   float diff = max(dot(norm, lightDir), 0.0);\n"
+		"   vec3 diffuse = diff * lightColor;\n"
+
+		"   // Resulting color\n"
+		"   vec3 result = (ambient + diffuse);\n"
+		"   FragColor = vec4(result, 1.0f);\n"
 		"}";
+
+
 
 	//std::string vertex_shader_code = loadShaderSource("../../shared/assets/shaders/vertex_shader.glsl");
 	//std::string fragment_shader_code = loadShaderSource("../../shared/assets/shaders/fragment_shader.glsl");
@@ -196,19 +238,26 @@ Camera& View::get_camera()
 void View::render()
 {
 	glClear(GL_COLOR_BUFFER_BIT);
-	// Use your shader program
 	glUseProgram(shaderProgram);
 
-	// Bind your VAO and VBO
+	// get uniform locations
+	GLint lightPosLocation = glGetUniformLocation(shaderProgram, "lightPos");
+	GLint viewPosLocation = glGetUniformLocation(shaderProgram, "viewPos");
+
+	// set uniform values
+	glUniform3f(lightPosLocation, light.position.x, light.position.y, light.position.z);
+	glUniform3f(viewPosLocation, camera.transform.position.x, camera.transform.position.y, camera.transform.position.z);
+
 	glBindVertexArray(VAO);
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 
-	// Draw the triangle
 	glDrawArrays(GL_TRIANGLES, 0, 3);
-	// Unbind everything
+
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 }
+
+
 
 void checkGlError(const char* op) {
 	for (GLint error = glGetError(); error; error = glGetError()) {

@@ -33,9 +33,11 @@ public:
 	struct Light
 	{
 		example::Vector3f position;
+		example::Vector3f view;
 		Color color;
-		Light(const example::Vector3f& position_, const Color& color_)
-			: position(position_), color(color_)
+		Light() = default;
+		Light(const example::Vector3f& position_,const example::Vector3f& view_, const Color& color_)
+			: position(position_), view(view_), color(color_)
 		{}
 	};
 	View(float width, float height);
@@ -46,7 +48,7 @@ public:
 	void render();
 	Camera& get_camera();
 private:
-	//Light light;
+	Light light;
 	Color ambient_color;
 	float rand_clamp() { return float(rand() & 0xff) * 0.0039215f; }
 	GLuint compile_shaders();

@@ -87,7 +87,8 @@ public:
     }
     void move_camera(float x, float y, float z);
     void update_directions();
-
+    Transform transform;
+    example::Vector3f view_direction;
 private:
     float fov;
     float near_plane;
@@ -98,8 +99,6 @@ private:
     float current_yaw = 0.0f;
     float look_speed = 0.1f; 
     float min_mouse_delta = 0.5f;
-    Transform transform;
-    example::Vector3f view_direction;
     example::Vector3f up_direction;
 	example::Vector3f right_direction;
     bool mouse_captured = false;
