@@ -19,8 +19,10 @@ private:
 	typedef std::vector< Color  >      Vertex_Colors;
 
 	// OpenGL resources
-	GLuint VAO, VBO, IBO;
 	GLuint shaderProgram;
+	GLint modelMatrixLocation;
+	GLint projectionMatrixLocation;
+	GLuint VAO, VBO, IBO;
 	std::vector<Mesh> meshes;
 	Camera camera;
 	unsigned width;
@@ -45,7 +47,6 @@ public:
 private:
 	Light light;
 	Color ambient_color;
-	bool  is_frontface(const Vertex* const projected_vertices, const int* const indices);
 	float rand_clamp() { return float(rand() & 0xff) * 0.0039215f; }
 	GLuint compile_shaders();
 	void show_compilation_error(GLuint  shader_id);

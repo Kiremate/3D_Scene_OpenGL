@@ -1,8 +1,5 @@
-
-// Este código es de dominio público.
-// angel.rodriguez@esne.edu
-// 2021.12 - 2021.04
-
+#include <cassert>
+#include <glad/glad.h>
 #include <SFML/Window.hpp>
 #include <windows.h>
 #include "View.hpp"
@@ -17,7 +14,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int nCmdShow
     constexpr auto window_width  = 800u;
     constexpr auto window_height = 600u;
 
-    Window window(VideoMode(window_width, window_height), "Mesh Loader", Style::Titlebar | Style::Close);
+    Window window(VideoMode(window_width, window_height), "Mesh Loader", Style::Titlebar | Style::Default, ContextSettings(32, 0, 0, 3, 3, ContextSettings::Core));
+    GLenum glad_initialization = gladLoadGL();
+    assert(glad_initialization != 0);
+
     View   view  (window_width, window_height);
 
     window.setVerticalSyncEnabled (true);

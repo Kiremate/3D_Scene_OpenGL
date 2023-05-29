@@ -20,8 +20,9 @@ View::View(float width, float height)
 	: width(width), height(height), camera(60.0f, 0.1f, 100.0f, Vector3f(0.0f, 0.0f, 15.0f), Vector3f(0.0f, 0.0f, -1.0f), Vector3f(0.0f, 1.0f, 0.0f)), light(Vector3f(0.0f, 0.0f, 0.0f), Color(0, 0, 0)), ambient_color(Color(0, 0, 0))
 {
 	// Load mesh data from file
-	meshes.push_back(Mesh(""));
-	textureManager.loadTexture("texture", "../../shared/assets/texture.png");
+	meshes.push_back(Mesh("../../shared/assets/stanford-bunny.obj"));
+	textureManager.loadTexture("texture", "../../shared/assets/uv-checker.png");
+
 	// OpenGL resources
 	// 
 	// Generate and bind Vertex Array Object
@@ -31,11 +32,20 @@ View::View(float width, float height)
 	// Generate and bind Vertex Buffer Object
 	glGenBuffers(1, &VBO);
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, meshes[0].getVertices().size() * sizeof(Vertex), meshes[0].getVertices().data(), GL_STATIC_DRAW);
 
 	// Generate and bind Index Buffer Object
 	glGenBuffers(1, &IBO);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, meshes[0].getIndices().size() * sizeof(int), meshes[0].getIndices().data(), GL_STATIC_DRAW);
 
+	// Compile and use shaders
+	shaderProgram = compile_shaders();
+	glUseProgram(shaderProgram);
+
+	// Get uniform locations
+	modelMatrixLocation = glGetUniformLocation(shaderProgram, "model");
+	projectionMatrixLocation = glGetUniformLocation(shaderProgram, "projection");
 }
 
 View::~View()

@@ -12,5 +12,7 @@ public:
     example::Index_Buffer original_indices;
     example::Vertex_Colors original_colors;
     Mesh(const std::string& file_path);
+    const example::Vertex_Buffer& getVertices() const { return original_vertices; }
+    const example::Index_Buffer& getIndices() const { return original_indices; }
     void transform_vertices(Camera& camera, float width, float height);
 };
