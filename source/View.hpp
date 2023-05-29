@@ -46,7 +46,7 @@ public:
 	void render();
 	Camera& get_camera();
 private:
-	Light light;
+	//Light light;
 	Color ambient_color;
 	float rand_clamp() { return float(rand() & 0xff) * 0.0039215f; }
 	GLuint compile_shaders();
