@@ -1,60 +1,83 @@
-#pragma once
 
-#include <Color_Buffer.hpp>
-#include <cstdlib>
-#include "math.hpp"
-#include <vector>
+// Este código es de dominio público.
+// angel.rodriguez@esne.edu
+// 2014.05
+
+#ifndef VIEW_HEADER
+#define VIEW_HEADER
+
+#include <glad/glad.h>
+#include <glm/glm.hpp>
+#include <string>
 #include "Camera.h"
-#include "Mesh.h"
-#include "TextureManager.h"
+#include "Skybox.h"
 
-class View
+namespace example
 {
-private:
-	typedef Rgb888                Color;
-	typedef Color_Buffer< Color > Color_Buffer;
-	typedef Point4f               Vertex;
-	typedef std::vector< Vertex >      Vertex_Buffer;
-	typedef std::vector< int    >      Index_Buffer;
-	typedef std::vector< Color  >      Vertex_Colors;
 
-	// OpenGL resources
-	GLuint shaderProgram;
-	GLint modelMatrixLocation;
-	GLint projectionMatrixLocation;
-	GLint viewMatrixLocation;
-	GLuint VAO, VBO, IBO;
-	std::vector<Mesh> meshes;
-	Camera camera;
-	unsigned width;
-	unsigned height;
+    using glm::vec3;
 
-public:
-	struct Light
-	{
-		example::Vector3f position;
-		example::Vector3f view;
-		Color color;
-		Light() = default;
-		Light(const example::Vector3f& position_,const example::Vector3f& view_, const Color& color_)
-			: position(position_), view(view_), color(color_)
-		{}
-	};
-	View(float width, float height);
-	~View();
-	TextureManager textureManager;
+    class View
+    {
+    private:
+        Camera camera;
+        Skybox skybox;
 
-	void update();
-	void render();
-	Camera& get_camera();
-private:
-	Light light;
-	Color ambient_color;
-	float rand_clamp() { return float(rand() & 0xff) * 0.0039215f; }
-	GLuint compile_shaders();
-	void show_compilation_error(GLuint  shader_id);
-	void show_linkage_error(GLuint program_id);
-	void checkGlError(const char* op);
-	std::string loadShaderSource(const std::string& shaderFilePath);
-};
+        int    width;
+        int    height;
 
+        float  angle_around_x;
+        float  angle_around_y;
+        float  angle_delta_x;
+        float  angle_delta_y;
+
+        bool   pointer_pressed;
+        int    last_pointer_x;
+        int    last_pointer_y;
+
+        enum
+        {
+            COORDINATES_VBO,
+            COLORS_VBO,
+            INDICES_EBO,
+            VBO_COUNT
+        };
+
+        static const std::string   vertex_shader_code;
+        static const std::string fragment_shader_code;
+
+        GLuint  vbo_ids[VBO_COUNT];
+        GLuint  vao_id;
+
+        GLsizei number_of_indices;
+
+        GLint   model_view_matrix_id;
+        GLint   projection_matrix_id;
+
+        float   angle;
+
+    public:
+
+        View(int width, int height);
+        ~View();
+
+        void   update();
+        void   render();
+        void   resize(int width, int height);
+        void on_key(int key_code);
+        void on_drag(int pointer_x, int pointer_y);
+        void on_click(int pointer_x, int pointer_y, bool down);
+
+    private:
+
+        GLuint compile_shaders();
+        void   show_compilation_error(GLuint  shader_id);
+        void   show_linkage_error(GLuint program_id);
+        void   load_mesh(const std::string& mesh_file_path);
+        vec3   random_color();
+
+    };
+
+}
+
+#endif

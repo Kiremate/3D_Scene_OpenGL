@@ -9,9 +9,8 @@
 
     #include <algorithm>
     #include <cassert>
-    #include "Color.hpp"
-    #include <SFML/OpenGL.hpp>              // Solo se usa para mover el buffer de pixels a una ventana
     #include <vector>
+    #include "Color.hpp"
 
     namespace argb
     {
@@ -62,8 +61,8 @@
 
         public:
 
-                  Color_Format * pixels ()       { return buffer.data (); }
-            const Color_Format * pixels () const { return buffer.data (); }
+                  Color_Format * colors ()       { return buffer.data (); }
+            const Color_Format * colors () const { return buffer.data (); }
 
                   Iterator       begin  ()       { return start; }
             const Iterator       begin  () const { return start; }
@@ -93,14 +92,14 @@
                 std::fill_n (buffer.data (), size, color);
             }
 
-            void set_pixel (unsigned x, unsigned y, Color & color)
+            void set_color (unsigned x, unsigned y, Color & color)
             {
                 assert(x < width && y < height);
 
                 buffer[y * width + x] = color;
             }
 
-            void set_pixel (unsigned offset, Color & color)
+            void set_color (unsigned offset, Color & color)
             {
                 assert(offset < buffer.size ());
 
@@ -109,41 +108,15 @@
 
             explicit operator Color_Format * ()
             {
-                return pixels ();
+                return colors ();
             }
 
             explicit operator const Color_Format * () const
             {
-                return pixels ();
+                return colors ();
             }
 
-            void blit_to_window () const;
-
         };
-
-        //template< >
-        //inline void Color_Buffer< Rgb332 >::blit_to_window () const
-        //{
-        //    glRasterPos2f (-1.f, +1.f);
-        //    glPixelZoom   (+1.f, -1.f);
-        //    glDrawPixels  (int(width), int(height), GL_RGB, /*GL_UNSIGNED_BYTE_3_3_2*/0x8032, buffer.data ());
-        //}
-
-        //template< >
-        //inline void Color_Buffer< Rgb565 >::blit_to_window () const
-        //{
-        //    glRasterPos2f (-1.f, +1.f);
-        //    glPixelZoom   (+1.f, -1.f);
-        //    glDrawPixels  (int(width), int(height), GL_RGB, /*GL_UNSIGNED_SHORT_5_6_5*/0x8363, buffer.data ());
-        //}
-
-        //template< >
-        //inline void Color_Buffer< Rgb24 >::blit_to_window () const
-        //{
-        //    glRasterPos2f (-1.f, +1.f);
-        //    glPixelZoom   (+1.f, -1.f);
-        //    glDrawPixels  (int(width), int(height), GL_RGB, GL_UNSIGNED_BYTE, buffer.data ());
-        //}
 
     }
 

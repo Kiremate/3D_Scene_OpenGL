@@ -1,295 +1,366 @@
 
 // Este código es de dominio público.
 // angel.rodriguez@esne.edu
-// 2013.12 - 2021.04
+// 2014.05
+
+#include "View.hpp"
 
 #include <cassert>
-#include <cmath>
-#include <glad/glad.h>
-#include "math.hpp"
-#include "View.hpp"
+#include <cstdlib>
+#include <iostream>
+#include <vector>
+
+#include <glm/glm.hpp>                          // vec3, vec4, ivec4, mat4
+#include <glm/gtc/matrix_transform.hpp>         // translate, rotate, scale, perspective
+#include <glm/gtc/type_ptr.hpp>                 // value_ptr
+
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
-#include "Mesh.h"
-#include <iostream>
-#include <fstream>
-#include <sstream>
 
-#ifdef DEBUG
-#define CHECK_GL_ERROR(op) checkGlError(op)
-#else
-#define CHECK_GL_ERROR(op)
-#endif
+using namespace std;
+using namespace glm;
 
-
-View::View(float width, float height)
-	: width(width), height(height)
+namespace example
 {
-	// Generate and bind Vertex Array Object
-	glDisable(GL_CULL_FACE);
-	glGenVertexArrays(1, &VAO);
-	glBindVertexArray(VAO);
 
-	// Simple triangle data
-	float vertices[] = {
-		-0.5f, -0.5f, 0.0f,
-		0.5f, -0.5f, 0.0f,
-		0.0f, 0.5f, 0.0f
-	};
+    const string View::vertex_shader_code =
 
-	// Generate and bind Vertex Buffer Object
-	glGenBuffers(1, &VBO);
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+        "#version 330\n"
+        ""
+        "uniform mat4 model_view_matrix;"
+        "uniform mat4 projection_matrix;"
+        ""
+        "layout (location = 0) in vec3 vertex_coordinates;"
+        "layout (location = 1) in vec3 vertex_color;"
+        ""
+        "out vec3 front_color;"
+        ""
+        "void main()"
+        "{"
+        "   gl_Position = projection_matrix * model_view_matrix * vec4(vertex_coordinates, 1.0);"
+        "   front_color = vertex_color;"
+        "}";
 
-	// Setup the vertex attributes pointers.
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
+    const string View::fragment_shader_code =
 
-	// Compile and use shaders
-	shaderProgram = compile_shaders();
-	glUseProgram(shaderProgram);
+        "#version 330\n"
+        ""
+        "in  vec3    front_color;"
+        "out vec4 fragment_color;"
+        ""
+        "void main()"
+        "{"
+        "    fragment_color = vec4(front_color, 1.0);"
+        "}";
 
-	// Initialize Camera
-	// Adjust the values here to fit your specific needs
-	float fov = 45.0f;
-	float near_plane = 0.1f;
-	float far_plane = 100.0f;
-	example::Vector3f position(0.0f, 0.0f, 3.0f);  // move the camera back along Z-axis
-	example::Vector3f target(0.0f, 0.0f, 0.0f);    // look towards the origin
-	example::Vector3f up(0.0f, 1.0f, 0.0f);
-	camera = Camera(fov, near_plane, far_plane, position, target, up);
-	// Initialize Light
-	Color lightColor = { 1.0f, 1.0f, 1.0f }; // white light
-	light.position = camera.transform.position;  // move the light position with the camera
-	light.view = camera.view_direction;
-	light.color = lightColor;
-}
-View::~View()
-{
-	// Delete the VAO, VBO, and IBO
-	glDeleteVertexArrays(1, &VAO);
-	glDeleteBuffers(1, &VBO);
-	glDeleteBuffers(1, &IBO);
+    View::View(int width, int height)
+        :
+        skybox("../../shared/assets/sky-cube-map-"),
+        angle(0)
+    {
+        // Se establece la configuración básica:
+        glDisable(GL_DEPTH_TEST);
+        glEnable(GL_CULL_FACE);
+        glClearColor(.1f, .1f, .1f, 1.f);
 
-	// Delete the shader program
-	glDeleteProgram(shaderProgram);
+        // Se compilan y se activan los shaders:
 
-	// Delete textures
-	// You should probably store all your texture ids in a std::vector or similar container
-	// to be able to delete them all here.
-	// In this case, I'll just delete the texture named "texture"
-	GLuint texture = textureManager.getTexture("texture");
-	glDeleteTextures(1, &texture);
-}
+        GLuint program_id = compile_shaders();
 
-GLuint View::compile_shaders()
-{
-	GLint succeeded = GL_FALSE;
+        glUseProgram(program_id);
 
-	// Create shader objects:
-	GLuint vertex_shader_id = glCreateShader(GL_VERTEX_SHADER);
-	GLuint fragment_shader_id = glCreateShader(GL_FRAGMENT_SHADER);
+        model_view_matrix_id = glGetUniformLocation(program_id, "model_view_matrix");
+        projection_matrix_id = glGetUniformLocation(program_id, "projection_matrix");
 
-	// Load shader source code from files:
+        resize(width, height);
+        angle_around_x = angle_delta_x = 0.0;
+        angle_around_y = angle_delta_y = 0.0;
+        pointer_pressed = false;
+        load_mesh("../../shared/assets/stanford-bunny.obj");
+    }
 
+    View::~View()
+    {
+        glDeleteVertexArrays(1, &vao_id);
+        glDeleteBuffers(VBO_COUNT, vbo_ids);
+    }
 
-	const std::string vertex_shader_code =
-		"#version 330 core\n"
-		"layout (location = 0) in vec3 aPos;\n"
-		"layout (location = 1) in vec3 aNormal;\n"
-		"uniform mat4 model;\n"
-		"uniform mat4 view;\n"
-		"uniform mat4 projection;\n"
-		"out vec3 FragPos;\n"
-		"out vec3 Normal;\n"
-		"void main()\n"
-		"{\n"
-		"   FragPos = vec3(model * vec4(aPos, 1.0));\n"
-		"   Normal = mat3(transpose(inverse(model))) * aNormal;\n"
-		"   gl_Position = projection * view * vec4(FragPos, 1.0);\n"
-		"}";
+    void View::update()
+    {
+        angle += 0.01f;
+        // Skybox code:
+        angle_around_x += angle_delta_x;
+        angle_around_y += angle_delta_y;
 
-	const std::string fragment_shader_code =
-		"#version 330 core\n"
-		"out vec4 FragColor;\n"
-		"uniform vec3 lightPos;\n"
-		"uniform vec3 lightColor;\n"
-		"uniform vec3 viewPos;\n"
-		"uniform vec3 ambientColor;\n"
-		"in vec3 FragPos;\n"
-		"in vec3 Normal;\n"
-		"void main()\n"
-		"{\n"
-		"   // Ambient lighting\n"
-		"   float ambientStrength = 0.1f;\n"
-		"   vec3 ambient = ambientStrength * ambientColor;\n"
+        if (angle_around_x < -1.5)
+        {
+            angle_around_x = -1.5;
+        }
+        else
+            if (angle_around_x > +1.5)
+            {
+                angle_around_x = +1.5;
+            }
 
-		"   // Diffuse lighting\n"
-		"   vec3 norm = normalize(Normal);\n"
-		"   vec3 lightDir = normalize(lightPos - FragPos);\n"
-		"   float diff = max(dot(norm, lightDir), 0.0);\n"
-		"   vec3 diffuse = diff * lightColor;\n"
+        glm::mat4 camera_rotation(1);
 
-		"   // Resulting color\n"
-		"   vec3 result = (ambient + diffuse);\n"
-		"   FragColor = vec4(result, 1.0f);\n"
-		"}";
+        camera_rotation = glm::rotate(camera_rotation, angle_around_y, glm::vec3(0.f, 1.f, 0.f));
+        camera_rotation = glm::rotate(camera_rotation, angle_around_x, glm::vec3(1.f, 0.f, 0.f));
 
+        camera.set_target(0, 0, -1);
+        camera.rotate(camera_rotation);
+    }
 
-	//std::string vertex_shader_code = loadShaderSource("../../shared/assets/shaders/vertex_shader.glsl");
-	//std::string fragment_shader_code = loadShaderSource("../../shared/assets/shaders/fragment_shader.glsl");
-	if (vertex_shader_code.empty() || fragment_shader_code.empty()) {
-		std::cerr << "Failed to load shader source code from file." << std::endl;
-		exit(EXIT_FAILURE);
-	}
-	const GLchar* vertex_shaders_code_ptr = vertex_shader_code.c_str();
-	const GLchar* fragment_shaders_code_ptr = fragment_shader_code.c_str();
+    void View::render()
+    {
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        skybox.render(camera);
 
-	glShaderSource(vertex_shader_id, 1, &vertex_shaders_code_ptr, NULL);
-	glShaderSource(fragment_shader_id, 1, &fragment_shaders_code_ptr, NULL);
+        // Se rota el malla y se empuja hacia el fondo:
 
-	// Compile shaders:
-	glCompileShader(vertex_shader_id);
-	glCompileShader(fragment_shader_id);
+        glm::mat4 model_view_matrix(1);
 
-	// Check if compilation was successful:
-	glGetShaderiv(vertex_shader_id, GL_COMPILE_STATUS, &succeeded);
-	if (!succeeded) show_compilation_error(vertex_shader_id);
+        model_view_matrix = glm::translate(model_view_matrix, glm::vec3(0.f, 0.f, -3.f));
+        model_view_matrix = glm::rotate(model_view_matrix, angle, glm::vec3(0.f, 1.f, 0.f));
 
-	glGetShaderiv(fragment_shader_id, GL_COMPILE_STATUS, &succeeded);
-	if (!succeeded) show_compilation_error(fragment_shader_id);
+        glUniformMatrix4fv(model_view_matrix_id, 1, GL_FALSE, glm::value_ptr(model_view_matrix));
 
-	// Create a program object:
-	GLuint program_id = glCreateProgram();
+        // Se dibuja la malla:
 
-	// Load compiled shaders into the program:
-	glAttachShader(program_id, vertex_shader_id);
-	glAttachShader(program_id, fragment_shader_id);
+        glBindVertexArray(vao_id);
+        glDrawElements(GL_TRIANGLES, number_of_indices, GL_UNSIGNED_SHORT, 0);
 
-	// Link shaders:
-	glLinkProgram(program_id);
+       // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	// Check if linkage was successful:
-	glGetProgramiv(program_id, GL_LINK_STATUS, &succeeded);
-	if (!succeeded) show_linkage_error(program_id);
+    }
 
-	// Delete compiled shaders once they have been linked:
-	glDeleteShader(vertex_shader_id);
-	glDeleteShader(fragment_shader_id);
+    void View::resize(int width, int height)
+    {
+        glm::mat4 projection_matrix = glm::perspective(20.f, GLfloat(width) / height, 1.f, 5000.f);
 
-	return program_id;
-}
+        glUniformMatrix4fv(projection_matrix_id, 1, GL_FALSE, glm::value_ptr(projection_matrix));
 
-void View::show_linkage_error(GLuint program_id)
-{
-	std::string info_log;
-	GLint  info_log_length;
+        glViewport(0, 0, width, height);
+    }
 
-	glGetProgramiv(program_id, GL_INFO_LOG_LENGTH, &info_log_length);
+    GLuint View::compile_shaders()
+    {
+        GLint succeeded = GL_FALSE;
 
-	info_log.resize(info_log_length);
+        // Se crean objetos para los shaders:
 
-	glGetProgramInfoLog(program_id, info_log_length, NULL, &info_log.front());
+        GLuint   vertex_shader_id = glCreateShader(GL_VERTEX_SHADER);
+        GLuint fragment_shader_id = glCreateShader(GL_FRAGMENT_SHADER);
 
-	std::cerr << info_log.c_str() << std::endl;
+        // Se carga el código de los shaders:
+
+        const char* vertex_shaders_code[] = { vertex_shader_code.c_str() };
+        const char* fragment_shaders_code[] = { fragment_shader_code.c_str() };
+        const GLint    vertex_shaders_size[] = { (GLint)vertex_shader_code.size() };
+        const GLint  fragment_shaders_size[] = { (GLint)fragment_shader_code.size() };
+
+        glShaderSource(vertex_shader_id, 1, vertex_shaders_code, vertex_shaders_size);
+        glShaderSource(fragment_shader_id, 1, fragment_shaders_code, fragment_shaders_size);
+
+        // Se compilan los shaders:
+
+        glCompileShader(vertex_shader_id);
+        glCompileShader(fragment_shader_id);
+
+        // Se comprueba que si la compilación ha tenido éxito:
+
+        glGetShaderiv(vertex_shader_id, GL_COMPILE_STATUS, &succeeded);
+        if (!succeeded) show_compilation_error(vertex_shader_id);
+
+        glGetShaderiv(fragment_shader_id, GL_COMPILE_STATUS, &succeeded);
+        if (!succeeded) show_compilation_error(fragment_shader_id);
+
+        // Se crea un objeto para un programa:
+
+        GLuint program_id = glCreateProgram();
+
+        // Se cargan los shaders compilados en el programa:
+
+        glAttachShader(program_id, vertex_shader_id);
+        glAttachShader(program_id, fragment_shader_id);
+
+        // Se linkan los shaders:
+
+        glLinkProgram(program_id);
+
+        // Se comprueba si el linkage ha tenido éxito:
+
+        glGetProgramiv(program_id, GL_LINK_STATUS, &succeeded);
+        if (!succeeded) show_linkage_error(program_id);
+
+        // Se liberan los shaders compilados una vez se han linkado:
+
+        glDeleteShader(vertex_shader_id);
+        glDeleteShader(fragment_shader_id);
+
+        return (program_id);
+    }
+
+    void View::show_compilation_error(GLuint shader_id)
+    {
+        string info_log;
+        GLint  info_log_length;
+
+        glGetShaderiv(shader_id, GL_INFO_LOG_LENGTH, &info_log_length);
+
+        info_log.resize(info_log_length);
+
+        glGetShaderInfoLog(shader_id, info_log_length, NULL, &info_log.front());
+
+        cerr << info_log.c_str() << endl;
 
 #ifdef _MSC_VER
-	//OutputDebugStringA (info_log.c_str ());
+        //OutputDebugStringA (info_log.c_str ());
 #endif
 
-	assert(false);
-}
+        assert(false);
+    }
 
-void View::show_compilation_error(GLuint shader_id)
-{
-	std::string info_log;
-	GLint  info_log_length;
+    void View::show_linkage_error(GLuint program_id)
+    {
+        string info_log;
+        GLint  info_log_length;
 
-	glGetShaderiv(shader_id, GL_INFO_LOG_LENGTH, &info_log_length);
+        glGetProgramiv(program_id, GL_INFO_LOG_LENGTH, &info_log_length);
 
-	info_log.resize(info_log_length);
+        info_log.resize(info_log_length);
 
-	glGetShaderInfoLog(shader_id, info_log_length, NULL, &info_log.front());
+        glGetProgramInfoLog(program_id, info_log_length, NULL, &info_log.front());
 
-	std::cerr << info_log.c_str() << std::endl;
+        cerr << info_log.c_str() << endl;
 
 #ifdef _MSC_VER
-	//OutputDebugStringA (info_log.c_str ());
+        //OutputDebugStringA (info_log.c_str ());
 #endif
 
-	assert(false);
+        assert(false);
+    }
+
+    void View::load_mesh(const std::string& mesh_file_path)
+    {
+        Assimp::Importer importer;
+
+        auto scene = importer.ReadFile
+        (
+            mesh_file_path,
+            aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_SortByPType
+        );
+
+        // Si scene es un puntero nulo significa que el archivo no se pudo cargar con éxito:
+
+        if (scene && scene->mNumMeshes > 0)
+        {
+            // Para este ejemplo se coge la primera malla solamente:
+
+            auto mesh = scene->mMeshes[0];
+
+            size_t number_of_vertices = mesh->mNumVertices;
+
+            // Se generan índices para los VBOs del cubo:
+
+            glGenBuffers(VBO_COUNT, vbo_ids);
+            glGenVertexArrays(1, &vao_id);
+
+            // Se activa el VAO del cubo para configurarlo:
+
+            glBindVertexArray(vao_id);
+
+            // Se suben a un VBO los datos de coordenadas y se vinculan al VAO:
+
+            static_assert(sizeof(aiVector3D) == sizeof(fvec3), "aiVector3D should composed of three floats");
+
+            glBindBuffer(GL_ARRAY_BUFFER, vbo_ids[COORDINATES_VBO]);
+            glBufferData(GL_ARRAY_BUFFER, number_of_vertices * sizeof(aiVector3D), mesh->mVertices, GL_STATIC_DRAW);
+
+            glEnableVertexAttribArray(0);
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+            // El archivo del modelo 3D de ejemplo no guarda un color por cada vértice, por lo que se va
+            // a crear un array de colores aleatorios (tantos como vértices):
+
+            vector< vec3 > vertex_colors(number_of_vertices);
+
+            for (auto& color : vertex_colors)
+            {
+                color = random_color();
+            }
+
+            // Se suben a un VBO los datos de color y se vinculan al VAO:
+
+            glBindBuffer(GL_ARRAY_BUFFER, vbo_ids[COLORS_VBO]);
+            glBufferData(GL_ARRAY_BUFFER, vertex_colors.size() * sizeof(vec3), vertex_colors.data(), GL_STATIC_DRAW);
+
+            glEnableVertexAttribArray(1);
+            glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+            // Los índices en ASSIMP están repartidos en "faces", pero OpenGL necesita un array de enteros
+            // por lo que vamos a mover los índices de las "faces" a un array de enteros:
+
+            // Se asume que todas las "faces" son triángulos (revisar el flag aiProcess_Triangulate arriba).
+
+            number_of_indices = mesh->mNumFaces * 3;
+
+            vector< GLshort > indices(number_of_indices);
+
+            auto vertex_index = indices.begin();
+
+            for (unsigned i = 0; i < mesh->mNumFaces; ++i)
+            {
+                auto& face = mesh->mFaces[i];
+
+                assert(face.mNumIndices == 3);
+
+                *vertex_index++ = face.mIndices[0];
+                *vertex_index++ = face.mIndices[1];
+                *vertex_index++ = face.mIndices[2];
+            }
+
+            // Se suben a un EBO los datos de índices:
+
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_ids[INDICES_EBO]);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLshort), indices.data(), GL_STATIC_DRAW);
+        }
+    }
+
+    vec3 View::random_color()
+    {
+        return vec3
+        (
+            float(rand()) / float(RAND_MAX),
+            float(rand()) / float(RAND_MAX),
+            float(rand()) / float(RAND_MAX)
+        );
+    }
+
+    void View::on_key(int key_code)
+    {
+    }
+
+    void View::on_drag(int pointer_x, int pointer_y)
+    {
+        if (pointer_pressed)
+        {
+            angle_delta_x = 0.025f * float(last_pointer_y - pointer_y) / float(height);
+            angle_delta_y = 0.025f * float(last_pointer_x - pointer_x) / float(width);
+        }
+    }
+
+    void View::on_click(int pointer_x, int pointer_y, bool down)
+    {
+        if ((pointer_pressed = down) == true)
+        {
+            last_pointer_x = pointer_x;
+            last_pointer_y = pointer_y;
+        }
+        else
+        {
+            angle_delta_x = angle_delta_y = 0.0;
+        }
+    }
 }
-
-void View::update()
-{
-	for (auto& mesh : meshes)
-		mesh.transform_vertices(camera, width, height);
-}
-
-Camera& View::get_camera()
-{
-	return camera;
-}
-
-void View::render()
-{
-	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
-	glUseProgram(shaderProgram);
-
-	// get uniform locations
-	GLint lightPosLocation = glGetUniformLocation(shaderProgram, "lightPos");
-	GLint viewPosLocation = glGetUniformLocation(shaderProgram, "viewPos");
-	GLint lightColorLocation = glGetUniformLocation(shaderProgram, "lightColor");
-	GLint ambientColorLocation = glGetUniformLocation(shaderProgram, "ambientColor");
-	GLint modelLocation = glGetUniformLocation(shaderProgram, "model");
-	GLint viewLocation = glGetUniformLocation(shaderProgram, "view");
-	GLint projectionLocation = glGetUniformLocation(shaderProgram, "projection");
-
-	// set uniform values
-	glUniform3f(lightPosLocation, light.position.x, light.position.y, light.position.z);
-	glUniform3f(viewPosLocation, camera.transform.position.x, camera.transform.position.y, camera.transform.position.z);
-	glm::vec3 lightColor(light.color.R / 255.0f, light.color.G / 255.0f, light.color.B / 255.0f);
-
-	glUniform3f(lightColorLocation, lightColor.x, lightColor.y, lightColor.z);
-	glUniform3f(ambientColorLocation, 1.0f, 1.0f, 1.0f); // set an arbitrary ambient color
-
-	// Assuming aspect ratio is width/height, replace with appropriate values
-	float aspectRatio = width/height;
-
-	glm::mat4 modelMatrix = glm::mat4(1.0f); // Identity matrix, replace if your model has transformations
-	glm::mat4 viewMatrix = camera.get_view_matrix();
-	glm::mat4 projectionMatrix = camera.get_projection_matrix(aspectRatio);
-
-	glUniformMatrix4fv(modelLocation, 1, GL_FALSE, glm::value_ptr(modelMatrix));
-	glUniformMatrix4fv(viewLocation, 1, GL_FALSE, glm::value_ptr(viewMatrix));
-	glUniformMatrix4fv(projectionLocation, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindVertexArray(0);
-}
-
-
-
-void checkGlError(const char* op) {
-	for (GLint error = glGetError(); error; error = glGetError()) {
-		std::cerr << "After " << op << " glError (0x" << std::hex << error << ")\n";
-	}
-}
-
-std::string View::loadShaderSource(const std::string& shaderFilePath)
-{
-	std::ifstream shaderFile(shaderFilePath);
-	if (!shaderFile.good())
-	{
-		std::cerr << "Failed to open shader file: " << shaderFilePath << std::endl;
-		return "";
-	}
-
-	std::stringstream shaderStream;
-	shaderStream << shaderFile.rdbuf();
-	return shaderStream.str();
-}
-

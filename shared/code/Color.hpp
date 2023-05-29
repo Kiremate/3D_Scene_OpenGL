@@ -625,6 +625,24 @@
         using Argb64       = Argb16161616;
         using Argb128      = Argb32323232;
 
+        using Rgbaf        = Additive_Primaries< RGBAF,        Rgba_Layout< float    > >;
+        using Rgba8888     = Additive_Primaries< RGBA8888,     Rgba_Layout< uint8_t  > >;
+        using Rgba16161616 = Additive_Primaries< RGBA16161616, Rgba_Layout< uint16_t > >;
+        using Rgba32323232 = Additive_Primaries< RGBA32323232, Rgba_Layout< uint32_t > >;
+
+        using Rgba2321     = Additive_Primaries< RGBA2321,     Packed_Rgba_Layout<  2,  3,  2, 1 > >;
+        using Rgba2222     = Additive_Primaries< RGBA2222,     Packed_Rgba_Layout<  2,  2,  2, 2 > >;
+        using Rgba5551     = Additive_Primaries< RGBA5551,     Packed_Rgba_Layout<  5,  5,  5, 1 > >;
+        using Rgba4444     = Additive_Primaries< RGBA4444,     Packed_Rgba_Layout<  4,  4,  4, 4 > >;
+        using Rgba10111001 = Additive_Primaries< RGBA10111001, Packed_Rgba_Layout< 10, 11, 10, 1 > >;
+        using Rgba21212101 = Additive_Primaries< RGBA21212101, Packed_Rgba_Layout< 21, 21, 21, 1 > >;
+
+        using Rgba8        = Rgba2222;
+        using Rgba16       = Rgba4444;
+        using Rgba32       = Rgba8888;
+        using Rgba64       = Rgba16161616;
+        using Rgba128      = Rgba32323232;
+
     }
 
 #endif
