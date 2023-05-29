@@ -88,9 +88,9 @@ public:
     void move_camera(float x, float y, float z);
     void update_directions();
     Transform transform;
+    float fov;
     example::Vector3f view_direction;
 private:
-    float fov;
     float near_plane;
     float far_plane;
     float move_speed_ = 5.0f;

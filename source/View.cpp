@@ -56,13 +56,13 @@ View::View(float width, float height)
 	float fov = 45.0f;
 	float near_plane = 0.1f;
 	float far_plane = 100.0f;
-	example::Vector3f position(0.0f, 0.0f, 0.0f);
-	example::Vector3f target(0.0f, 0.0f, -1.0f);
+	example::Vector3f position(0.0f, 0.0f, 3.0f);  // move the camera back along Z-axis
+	example::Vector3f target(0.0f, 0.0f, 0.0f);    // look towards the origin
 	example::Vector3f up(0.0f, 1.0f, 0.0f);
 	camera = Camera(fov, near_plane, far_plane, position, target, up);
 	// Initialize Light
 	Color lightColor = { 1.0f, 1.0f, 1.0f }; // white light
-	light.position = camera.transform.position;
+	light.position = camera.transform.position;  // move the light position with the camera
 	light.view = camera.view_direction;
 	light.color = lightColor;
 }
@@ -138,10 +138,8 @@ GLuint View::compile_shaders()
 		"}";
 
 
-
 	//std::string vertex_shader_code = loadShaderSource("../../shared/assets/shaders/vertex_shader.glsl");
 	//std::string fragment_shader_code = loadShaderSource("../../shared/assets/shaders/fragment_shader.glsl");
-	// Safe check
 	if (vertex_shader_code.empty() || fragment_shader_code.empty()) {
 		std::cerr << "Failed to load shader source code from file." << std::endl;
 		exit(EXIT_FAILURE);
@@ -237,21 +235,37 @@ Camera& View::get_camera()
 
 void View::render()
 {
+	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 	glUseProgram(shaderProgram);
 
 	// get uniform locations
 	GLint lightPosLocation = glGetUniformLocation(shaderProgram, "lightPos");
 	GLint viewPosLocation = glGetUniformLocation(shaderProgram, "viewPos");
+	GLint lightColorLocation = glGetUniformLocation(shaderProgram, "lightColor");
+	GLint ambientColorLocation = glGetUniformLocation(shaderProgram, "ambientColor");
+	GLint modelLocation = glGetUniformLocation(shaderProgram, "model");
+	GLint viewLocation = glGetUniformLocation(shaderProgram, "view");
+	GLint projectionLocation = glGetUniformLocation(shaderProgram, "projection");
 
 	// set uniform values
 	glUniform3f(lightPosLocation, light.position.x, light.position.y, light.position.z);
 	glUniform3f(viewPosLocation, camera.transform.position.x, camera.transform.position.y, camera.transform.position.z);
+	glm::vec3 lightColor(light.color.R / 255.0f, light.color.G / 255.0f, light.color.B / 255.0f);
 
-	glBindVertexArray(VAO);
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glUniform3f(lightColorLocation, lightColor.x, lightColor.y, lightColor.z);
+	glUniform3f(ambientColorLocation, 1.0f, 1.0f, 1.0f); // set an arbitrary ambient color
 
-	glDrawArrays(GL_TRIANGLES, 0, 3);
+	// Assuming aspect ratio is width/height, replace with appropriate values
+	float aspectRatio = width/height;
+
+	glm::mat4 modelMatrix = glm::mat4(1.0f); // Identity matrix, replace if your model has transformations
+	glm::mat4 viewMatrix = camera.get_view_matrix();
+	glm::mat4 projectionMatrix = camera.get_projection_matrix(aspectRatio);
+
+	glUniformMatrix4fv(modelLocation, 1, GL_FALSE, glm::value_ptr(modelMatrix));
+	glUniformMatrix4fv(viewLocation, 1, GL_FALSE, glm::value_ptr(viewMatrix));
+	glUniformMatrix4fv(projectionLocation, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
