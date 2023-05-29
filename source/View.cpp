@@ -16,6 +16,13 @@
 #include <fstream>
 #include <sstream>
 
+#ifdef DEBUG
+#define CHECK_GL_ERROR(op) checkGlError(op)
+#else
+#define CHECK_GL_ERROR(op)
+#endif
+
+
 View::View(float width, float height)
 	: width(width), height(height), camera(60.0f, 0.1f, 100.0f, Vector3f(0.0f, 0.0f, 15.0f), Vector3f(0.0f, 0.0f, -1.0f), Vector3f(0.0f, 1.0f, 0.0f)), light(Vector3f(0.0f, 0.0f, 0.0f), Color(0, 0, 0)), ambient_color(Color(0, 0, 0))
 {
@@ -33,6 +40,7 @@ View::View(float width, float height)
 	glGenBuffers(1, &VBO);
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	glBufferData(GL_ARRAY_BUFFER, meshes[0].getVertices().size() * sizeof(Vertex), meshes[0].getVertices().data(), GL_STATIC_DRAW);
+	CHECK_GL_ERROR("glBufferData");
 
 	// Generate and bind Index Buffer Object
 	glGenBuffers(1, &IBO);
@@ -46,6 +54,7 @@ View::View(float width, float height)
 	// Get uniform locations
 	modelMatrixLocation = glGetUniformLocation(shaderProgram, "model");
 	projectionMatrixLocation = glGetUniformLocation(shaderProgram, "projection");
+	viewMatrixLocation = glGetUniformLocation(shaderProgram, "view");
 }
 
 View::~View()
@@ -195,8 +204,20 @@ void View::render()
 
 		// Set your model-view-projection matrices
 		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, &transformation[0][0]);
+		glUniformMatrix4fv(viewMatrixLocation, 1, GL_FALSE, glm::value_ptr(camera.get_view_matrix()));
 		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, &camera.get_projection_matrix(width / static_cast<float>(height))[0][0]);
+		// Lightning
+		GLint lightPosLoc = glGetUniformLocation(shaderProgram, "lightPos");
+		GLint lightColorLoc = glGetUniformLocation(shaderProgram, "lightColor");
+		GLint objectColorLoc = glGetUniformLocation(shaderProgram, "objectColor");
 
+		Vector3f lightPos = Vector3f(1.2f, 1.0f, 2.0f); 
+		Vector3f lightColor = Vector3f(1.0f, 1.0f, 1.0f); // White light
+		Vector3f objectColor = Vector3f(1.0f, 0.5f, 0.31f); // A kind of orange-ish color
+
+		glUniform3f(lightPosLoc, lightPos.x, lightPos.y, lightPos.z);
+		glUniform3f(lightColorLoc, lightColor.x, lightColor.y, lightColor.z);
+		glUniform3f(objectColorLoc, objectColor.x, objectColor.y, objectColor.z);
 		// Draw the mesh
 		glDrawElements(GL_TRIANGLES, mesh.original_indices.size(), GL_UNSIGNED_INT, 0);
 
@@ -207,6 +228,13 @@ void View::render()
 		glBindVertexArray(0);
 	}
 }
+
+void checkGlError(const char* op) {
+	for (GLint error = glGetError(); error; error = glGetError()) {
+		std::cerr << "After " << op << " glError (0x" << std::hex << error << ")\n";
+	}
+}
+
 std::string View::loadShaderSource(const std::string& shaderFilePath)
 {
 	std::ifstream shaderFile(shaderFilePath);

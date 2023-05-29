@@ -22,6 +22,7 @@ private:
 	GLuint shaderProgram;
 	GLint modelMatrixLocation;
 	GLint projectionMatrixLocation;
+	GLint viewMatrixLocation;
 	GLuint VAO, VBO, IBO;
 	std::vector<Mesh> meshes;
 	Camera camera;
@@ -51,6 +52,7 @@ private:
 	GLuint compile_shaders();
 	void show_compilation_error(GLuint  shader_id);
 	void show_linkage_error(GLuint program_id);
+	void checkGlError(const char* op);
 	std::string loadShaderSource(const std::string& shaderFilePath);
 };
 
