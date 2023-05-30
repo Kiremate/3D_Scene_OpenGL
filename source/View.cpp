@@ -51,8 +51,44 @@ namespace example
         ""
         "void main()"
         "{"
-        "    fragment_color = vec4(front_color, 1.0);"
+        "    fragment_color = vec4(front_color, 0.5);"
         "}";
+
+    const string View::postprocess_vertex_shader_code =
+        "#version 330\n"
+        "in vec2 position;"
+        "in vec2 texCoords;"
+        "out vec2 TexCoords;"
+        "void main()"
+        "{"
+        "   gl_Position = vec4(position, 0.0f, 1.0f);"
+        "   TexCoords = texCoords;"
+        "}";
+
+    const string View::postprocess_fragment_shader_code =
+        "#version 330\n"
+        "in vec2 TexCoords;"
+        "out vec4 color;"
+        "uniform sampler2D screenTexture;"
+        "void main()"
+        "{"
+        "   vec3 texColor = texture(screenTexture, TexCoords).rgb;"
+        "   float gray = dot(texColor, vec3(0.3, 0.59, 0.11));"
+        "   color = vec4(vec3(gray), 1.0f);"
+        "}";
+
+    float quadVertices[] = {
+        // positions   // texCoords
+        -1.0f,  1.0f,  0.0f, 1.0f,
+        -1.0f, -1.0f,  0.0f, 0.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
+
+        -1.0f,  1.0f,  0.0f, 1.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
+         1.0f,  1.0f,  1.0f, 1.0f
+    };
+
+
 
     View::View(int width, int height)
         :
@@ -60,10 +96,40 @@ namespace example
         angle(0)
     {
         // Se establece la configuración básica:
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glDisable(GL_DEPTH_TEST);
-        glEnable(GL_CULL_FACE);
+        glDisable(GL_CULL_FACE);
         glClearColor(.1f, .1f, .1f, 1.f);
 
+        // Framebuffer
+         // framebuffer configuration
+        glGenFramebuffers(1, &framebuffer);
+        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+        // create a color attachment texture
+        glGenTextures(1, &textureColorbuffer);
+        glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+            std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        // quad vertices for post-processing
+        glGenVertexArrays(1, &quadVAO);
+        glGenBuffers(1, &quadVBO);
+        glBindVertexArray(quadVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+        // compile the postprocessing shaders
+        postprocess_program_id = compile_postprocessing_shaders();
         // Se compilan y se activan los shaders:
 
         program_id = compile_shaders();
@@ -104,7 +170,9 @@ namespace example
     void View::render()
     {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+        // bind to framebuffer and draw scene as we normally would to color texture
+        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         // First, render the skybox
         skybox.render(camera);
 
@@ -128,6 +196,16 @@ namespace example
         // Bind the VAO and draw the bunny
         glBindVertexArray(vao_id);
         glDrawElements(GL_TRIANGLES, number_of_indices, GL_UNSIGNED_SHORT, 0);
+        // now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // use the postprocessing shader
+        glUseProgram(postprocess_program_id);
+        glBindVertexArray(quadVAO);
+        glBindTexture(GL_TEXTURE_2D, textureColorbuffer); // use the color attachment texture as the texture of the quad plane
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
     }
 
     void View::resize(int new_width, int new_height)
@@ -198,6 +276,7 @@ namespace example
 
         return (program_id);
     }
+
 
     void View::show_compilation_error(GLuint shader_id)
     {
@@ -359,5 +438,64 @@ namespace example
         {
             angle_delta_x = angle_delta_y = 0.0;
         }
+    }
+
+
+    GLuint View::compile_postprocessing_shaders()
+    {
+        GLint succeeded = GL_FALSE;
+
+        // Create objects for the shaders:
+
+        GLuint   vertex_shader_id = glCreateShader(GL_VERTEX_SHADER);
+        GLuint fragment_shader_id = glCreateShader(GL_FRAGMENT_SHADER);
+
+        // Load the code of the shaders:
+
+        const char* vertex_shaders_code[] = { postprocess_vertex_shader_code.c_str() };
+        const char* fragment_shaders_code[] = { postprocess_fragment_shader_code.c_str() };
+        const GLint    vertex_shaders_size[] = { (GLint)postprocess_vertex_shader_code.size() };
+        const GLint  fragment_shaders_size[] = { (GLint)postprocess_fragment_shader_code.size() };
+
+        glShaderSource(vertex_shader_id, 1, vertex_shaders_code, vertex_shaders_size);
+        glShaderSource(fragment_shader_id, 1, fragment_shaders_code, fragment_shaders_size);
+
+        // Compile the shaders:
+
+        glCompileShader(vertex_shader_id);
+        glCompileShader(fragment_shader_id);
+
+        // Check if the compilation was successful:
+
+        glGetShaderiv(vertex_shader_id, GL_COMPILE_STATUS, &succeeded);
+        if (!succeeded) show_compilation_error(vertex_shader_id);
+
+        glGetShaderiv(fragment_shader_id, GL_COMPILE_STATUS, &succeeded);
+        if (!succeeded) show_compilation_error(fragment_shader_id);
+
+        // Create an object for a program:
+
+        GLuint program_id = glCreateProgram();
+
+        // Load the compiled shaders into the program:
+
+        glAttachShader(program_id, vertex_shader_id);
+        glAttachShader(program_id, fragment_shader_id);
+
+        // Link the shaders:
+
+        glLinkProgram(program_id);
+
+        // Check if the linkage was successful:
+
+        glGetProgramiv(program_id, GL_LINK_STATUS, &succeeded);
+        if (!succeeded) show_linkage_error(program_id);
+
+        // Free the compiled shaders once they have been linked:
+
+        glDeleteShader(vertex_shader_id);
+        glDeleteShader(fragment_shader_id);
+
+        return (program_id);
     }
 }

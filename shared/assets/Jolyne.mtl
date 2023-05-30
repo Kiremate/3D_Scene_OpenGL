@@ -1,0 +1,65 @@
+# Blender 3.5.1 MTL File: 'Jolyne.blend'
+# www.blender.org
+
+newmtl Eyeliner
+Ns 2.657031
+Ka 1.000000 1.000000 1.000000
+Kd 0.002408 0.002408 0.002408
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 1
+
+newmtl Fabric
+Ns 220.599640
+Ka 1.000000 1.000000 1.000000
+Ks 0.075000 0.075000 0.075000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd source/JOJO/Texture/baju Text.jpg
+map_Bump -bm 1.000000 source/JOJO/Texture/baju.exr
+
+newmtl Hair
+Ns 389.678619
+Ka 1.000000 1.000000 1.000000
+Ks 0.112121 0.112121 0.112121
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd source/JOJO/Texture/Hair texture.png
+map_Bump -bm 1.300000 source/JOJO/Texture/Hair .exr
+
+newmtl Sclera.001
+Ns 1000.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.844879 0.612562 0.540196
+Ks 1.000000 1.000000 1.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+
+newmtl Skin
+Ns 68.821182
+Ka 1.000000 1.000000 1.000000
+Ks 0.230736 0.230736 0.230736
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd source/JOJO/Texture/Skin.png
+map_Bump -bm 1.000000 source/JOJO/Texture/Skin maps.exr
+
+newmtl iris.001
+Ns 178.658752
+Ka 0.604707 0.604707 0.604707
+Kd 0.003096 0.001031 0.000778
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 1

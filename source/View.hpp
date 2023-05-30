@@ -34,6 +34,12 @@ namespace example
         bool   pointer_pressed;
         int    last_pointer_x;
         int    last_pointer_y;
+        // Postprocess
+        GLuint framebuffer;
+        GLuint textureColorbuffer;
+        GLuint quadVAO;
+        GLuint quadVBO;
+        GLuint postprocess_program_id;
 
         enum
         {
@@ -45,7 +51,8 @@ namespace example
 
         static const std::string   vertex_shader_code;
         static const std::string fragment_shader_code;
-
+        static const std::string postprocess_vertex_shader_code;
+        static const std::string postprocess_fragment_shader_code;
         GLuint  vbo_ids[VBO_COUNT];
         GLuint  vao_id;
 
@@ -71,10 +78,13 @@ namespace example
     private:
 
         GLuint compile_shaders();
+        GLuint compile_postprocessing_shaders();
+
         void   show_compilation_error(GLuint  shader_id);
         void   show_linkage_error(GLuint program_id);
         void   load_mesh(const std::string& mesh_file_path);
         vec3   random_color();
+        static const GLuint TEXCOORDS_VBO = 3;
 
     };
 
