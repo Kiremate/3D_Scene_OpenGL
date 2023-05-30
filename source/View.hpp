@@ -11,6 +11,7 @@
 #include <string>
 #include "Camera.h"
 #include "Skybox.h"
+#include "TextureManager.h"
 
 namespace example
 {
@@ -40,6 +41,7 @@ namespace example
         GLuint quadVAO;
         GLuint quadVBO;
         GLuint postprocess_program_id;
+        TextureManager textureManager;
 
         enum
         {

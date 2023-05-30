@@ -1,19 +1,11 @@
-
-// Este código es de dominio público.
-// angel.rodriguez@esne.edu
-// 2014.05
-
 #include "View.hpp"
-
 #include <cassert>
 #include <cstdlib>
 #include <iostream>
 #include <vector>
-
 #include <glm/glm.hpp>                          // vec3, vec4, ivec4, mat4
 #include <glm/gtc/matrix_transform.hpp>         // translate, rotate, scale, perspective
 #include <glm/gtc/type_ptr.hpp>                 // value_ptr
-
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -101,9 +93,11 @@ namespace example
         glDisable(GL_DEPTH_TEST);
         glDisable(GL_CULL_FACE);
         glClearColor(.1f, .1f, .1f, 1.f);
-
+        textureManager.loadTexture("texture1", "../../shared/assets/textures/baju_Text.jpg");
+        textureManager.loadTexture("texture2", "../../shared/assets/textures/Hair_texture.png");
+        textureManager.loadTexture("texture3", "../../shared/assets/textures/Skin.png");
         // Framebuffer
-         // framebuffer configuration
+        // framebuffer configuration
         glGenFramebuffers(1, &framebuffer);
         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
         // create a color attachment texture
@@ -144,6 +138,7 @@ namespace example
         angle_around_y = angle_delta_y = 0.0;
         pointer_pressed = false;
         load_mesh("../../shared/assets/stanford-bunny.obj");
+        //load_mesh("../../shared/assets/Jolyne.obj");
     }
 
     View::~View()
