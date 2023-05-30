@@ -101,6 +101,11 @@ namespace example
                 glm::vec3(0.0f, 1.0f, 0.0f)
             );
         }
+        glm::mat4 get_model_view_matrix() const
+        {
+            return get_transform_matrix_inverse();
+        }
+
 
     private:
 

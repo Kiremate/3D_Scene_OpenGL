@@ -85,26 +85,15 @@ namespace example
         glDeleteVertexArrays(1, &vao_id);
         glDeleteBuffers(VBO_COUNT, vbo_ids);
     }
-
     void View::update()
     {
         angle += 0.01f;
-        // Skybox code:
         angle_around_x += angle_delta_x;
         angle_around_y += angle_delta_y;
 
-        if (angle_around_x < -1.5)
-        {
-            angle_around_x = -1.5;
-        }
-        else
-            if (angle_around_x > +1.5)
-            {
-                angle_around_x = +1.5;
-            }
-
         glm::mat4 camera_rotation(1);
 
+        // Add the rotations due to mouse dragging
         camera_rotation = glm::rotate(camera_rotation, angle_around_y, glm::vec3(0.f, 1.f, 0.f));
         camera_rotation = glm::rotate(camera_rotation, angle_around_x, glm::vec3(1.f, 0.f, 0.f));
 
@@ -115,32 +104,42 @@ namespace example
     void View::render()
     {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    
 
-        // Se rota el malla y se empuja hacia el fondo:
+        // First, render the skybox
+        skybox.render(camera);
 
-        glm::mat4 model_view_matrix(1);
+        // Now switch to the shader program for the bunny
+        glUseProgram(program_id);
 
-        model_view_matrix = glm::translate(model_view_matrix, glm::vec3(0.f, 0.f, -3.f));
-        model_view_matrix = glm::rotate(model_view_matrix, angle, glm::vec3(0.f, 1.f, 0.f));
+        // Send the projection matrix to the shader
+        glUniformMatrix4fv(projection_matrix_id, 1, GL_FALSE, glm::value_ptr(camera.get_projection_matrix()));
 
+        // Model transformation for the bunny
+        glm::mat4 model_matrix = glm::mat4(1.f);
+        model_matrix = glm::translate(model_matrix, glm::vec3(0.f, 0.f, -3.f));
+        model_matrix = glm::rotate(model_matrix, angle, glm::vec3(0.f, 1.f, 0.f));
+
+        // Combine the model and view transformations
+        glm::mat4 model_view_matrix = camera.get_model_view_matrix() * model_matrix;
+
+        // Send the transformation to the shader
         glUniformMatrix4fv(model_view_matrix_id, 1, GL_FALSE, glm::value_ptr(model_view_matrix));
 
-        // Se dibuja la malla:
-        skybox.render(camera);
-        glUseProgram(program_id);
+        // Bind the VAO and draw the bunny
         glBindVertexArray(vao_id);
         glDrawElements(GL_TRIANGLES, number_of_indices, GL_UNSIGNED_SHORT, 0);
     }
 
-    void View::resize(int width, int height)
+    void View::resize(int new_width, int new_height)
     {
-        glm::mat4 projection_matrix = glm::perspective(20.f, GLfloat(width) / height, 1.f, 5000.f);
+        width = new_width;
+        height = new_height;
 
-        glUniformMatrix4fv(projection_matrix_id, 1, GL_FALSE, glm::value_ptr(projection_matrix));
+        camera.set_ratio(float(width) / height);
 
         glViewport(0, 0, width, height);
     }
+
 
     GLuint View::compile_shaders()
     {
