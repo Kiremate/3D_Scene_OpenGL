@@ -163,6 +163,7 @@
     <ClInclude Include="..\..\source\math.hpp" />
     <ClInclude Include="..\..\source\Mesh.h" />
     <ClInclude Include="..\..\source\MeshData.h" />
+    <ClInclude Include="..\..\source\MeshDataTypes.h" />
     <ClInclude Include="..\..\source\Node.h" />
     <ClInclude Include="..\..\source\Rasterizer.hpp" />
     <ClInclude Include="..\..\source\Skybox.h" />

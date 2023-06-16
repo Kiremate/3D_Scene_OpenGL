@@ -1,33 +1,47 @@
-3D_Scene_Renderer
-This project is a simple 3D rendering engine, designed for educational purposes. It demonstrates the use of basic 3D graphics concepts, such as camera control, mesh loading, and rasterization.
+# 3D_Scene_OpenGL
+This project is a 3D scene rendered using OpenGL. It consists of multiple classes that handle different aspects of the scene, such as the camera, mesh rendering, skybox, and texture management.
 
 Classes
-Camera
-The Camera class is responsible for representing the camera in the 3D scene. It stores information about the camera's position, orientation, and projection properties. The class provides methods to control the camera and to retrieve its view and projection matrices.
-
-Mesh
-The Mesh class represents a 3D mesh in the scene. It inherits from the Node class, which allows it to be transformed and organized hierarchically. The Mesh class loads mesh data from a file using the Assimp library, and it stores the original vertices, indices, and colors, as well as transformed vertices and display vertices.
-
-MeshData
-The MeshData class is a helper class that stores vertex, index, and color data for a mesh. It provides methods to manipulate and access the mesh data.
-
-Node
-The Node class is a base class for objects in the scene. It provides basic functionality for hierarchical transformations and updates. Classes that inherit from Node can implement their own update and transformation logic, making it easy to create complex scenes with multiple objects.
-
-Rasterizer
-The Rasterizer class is responsible for rasterizing the 3D scene onto a 2D buffer. It takes the transformed vertices from the Mesh class and projects them onto the screen. The class provides methods to draw polygons, clear the buffer, and blit the buffer to the window.
-
+Camera.h: Defines the camera class, which represents the viewpoint and handles camera transformations.
+Mesh.h: Handles loading and rendering of a mesh object.
+MeshData.h: Contains the data structure for storing mesh information.
+Node.h: Represents a node in a scene graph, used for hierarchical transformations.
+Skybox.h: Manages the rendering of a skybox.
+TextureManager.h: Handles loading and managing textures.
+View.hpp: Implements the main view class, which sets up the OpenGL context and handles rendering the scene.
+Main Components
 View
-The View class manages the main rendering loop and maintains references to the camera, rasterizer, and scene objects. It is responsible for updating the camera and objects, as well as rendering the scene using the rasterizer.
+The View class is the main class responsible for rendering the 3D scene. It handles the initialization of the OpenGL context, manages the camera, skybox, shaders, and rendering of the mesh. The View class also handles user input and updates the scene accordingly.
 
-Main
-The Main.cpp file is the entry point of the application. It initializes the window, creates an instance of the View class, and enters the main event loop.
+Rendering
+void update(): This method is called to update the scene. It handles any necessary transformations, such as camera rotations.
+void render(): This method is called to render the scene. It starts by clearing the color and depth buffers, renders the skybox, sets up the shader program for the mesh, sends transformation matrices to the shader, and draws the mesh. It also includes post-processing effects by binding the framebuffer and rendering a quad with a texture.
+Initialization and Setup
 
-How to use
-Compile and run the project using your preferred C++ compiler and development environment.
-Interact with the 3D scene using the provided camera controls.
-Dependencies
-This project requires the following libraries:
+void resize(int new_width, int new_height): This method is called when the window is resized. It updates the viewport and aspect ratio of the camera.
+GLuint compile_shaders(): This method compiles the vertex and fragment shaders for the main rendering.
+GLuint compile_postprocessing_shaders(): This method compiles the vertex and fragment shaders for post-processing effects.
+void load_mesh(const std::string& mesh_file_path): This method loads a mesh from a file using the Assimp library. It generates vertex and index buffers for rendering the mesh.
 
-Assimp (Asset Importer Library): for loading 3D mesh data from various file formats.
-SDL2 (Simple DirectMedia Layer): for creating a window, handling user input, and displaying the rendered image.
+User Input
+void on_key(int key_code): This method is called when a key is pressed. It can be used to handle key-based interactions.
+void on_drag(int pointer_x, int pointer_y): This method is called when the mouse is dragged. It updates the rotation angles based on the mouse movement.
+void on_click(int pointer_x, int pointer_y, bool down): This method is called when a mouse button is clicked or released. It handles the mouse button state and updates the rotation angles accordingly.
+
+Shaders
+The class includes the vertex and fragment shader code as static string constants.
+
+These are the key functionalities provided by the View class to handle the rendering and interaction with the 3D scene using OpenGL.
+TextureManager
+The TextureManager class handles the loading and management of textures. It provides methods to load textures from files and retrieve the OpenGL texture ID associated with a specific texture.
+
+Usage
+To use the 3D scene, follow these steps:
+
+Include the necessary header files in your project: Camera.h, Mesh.h, MeshData.h, Node.h, Skybox.h, Texture_Cube.h, TextureManager.h, and View.hpp.
+
+Create an instance of the View class and provide the width and height of the window.
+
+Inside your main loop, call the update() and render() methods of the View instance to update and render the scene, respectively.
+
+Handle user input events and pass them to the View instance by calling the appropriate methods, such as on_key, on_drag, and on_click to move the camera.

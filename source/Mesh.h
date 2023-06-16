@@ -1,20 +1,24 @@
-//#pragma once
-//#include "Node.h"
-//#include "MeshData.h"
-//#include <string>
-//#include "Camera.h"
-//class Mesh : public Node
-//{
-//public:
-//    example::Vertex_Buffer original_vertices;
-//    example::Vertex_Buffer transformed_vertices;
-//    example::UV_Buffer original_uvs;   // Add this
-//    example::Index_Buffer original_indices;
-//    example::Vertex_Colors original_colors;
-//    Mesh(const std::string& file_path);
-//    const example::Vertex_Buffer& getVertices() const { return original_vertices; }
-//    const example::Index_Buffer& getIndices() const { return original_indices; }
-//    void transform_vertices(Camera& camera, float width, float height);
-//    const std::vector<example::Vertex>& getTransformedVertices() const;
-// 
-//};
+#pragma once
+#include "Node.h"
+#include "MeshData.h"
+#include <string>
+#include "Camera.h"
+#include <glad/glad.h>
+#include <glm/glm.hpp>
+#include "MeshDataTypes.h"
+
+using namespace glm;
+class Mesh 
+{
+public:
+    Mesh(const std::string& filePath);
+    ~Mesh();
+    void render() const;
+    void load_mesh(const std::string& mesh_file_path);
+
+private:
+    GLuint vao_id;
+    GLuint vbo_ids[VBO_COUNT];
+    GLuint number_of_indices;
+    vec3 random_color();
+};

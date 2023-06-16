@@ -2,19 +2,31 @@
 #include "math.hpp"
 #include <vector>
 #include <memory>
-class Node
+using namespace example;
+class Mesh;
+
+class Node : public std::enable_shared_from_this<Node>
 {
 public:
-    example::Matrix44 transformation;
     std::vector<std::shared_ptr<Node>> children;
+    std::weak_ptr<Node> parent;
 
-    Node() : transformation(1) {}
-    virtual ~Node() = default;
+    glm::mat4 transformation;
 
-    // void update(const Matrix44& parent_transform);
+    std::shared_ptr<Mesh> mesh; 
 
-    void add_child(const std::shared_ptr<Node>& child)
-    {
-        children.push_back(child);
-    }
+    Node(const glm::mat4& transformation = glm::mat4(1.0f))
+        : transformation(transformation)
+    {}
+
+    void translate(const glm::vec3& offset);
+
+    void rotate(float angle, const glm::vec3& axis);
+
+    void scale(const glm::vec3& scaleFactor);
+
+    void addChild(std::shared_ptr<Node> child);
+
+    void render();
+ 
 };

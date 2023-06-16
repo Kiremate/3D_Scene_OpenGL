@@ -9,7 +9,7 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
-
+#include "Mesh.h"
 using namespace std;
 using namespace glm;
 
@@ -87,6 +87,16 @@ namespace example
         skybox("../../shared/assets/sky-cube-map-"),
         angle(0)
     {
+        glm::mat4 transformation = glm::mat4(1.f);
+        transformation = glm::translate(transformation, glm::vec3(0.f, 0.f, -3.f));
+        transformation = glm::rotate(transformation, angle, glm::vec3(0.f, 1.f, 0.f));
+        rootNode = std::make_shared<Node>(transformation);
+        std::shared_ptr<Mesh> bunnyMesh = std::make_shared<Mesh>("../../shared/assets/stanford-bunny.obj");
+        rootNode->mesh = bunnyMesh;
+
+
+
+
         // Se establece la configuración básica:
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -187,7 +197,8 @@ namespace example
 
         // Send the transformation to the shader
         glUniformMatrix4fv(model_view_matrix_id, 1, GL_FALSE, glm::value_ptr(model_view_matrix));
-
+        // Render the root node (which will recursively render all children)
+        rootNode->render();
         // Bind the VAO and draw the bunny
         glBindVertexArray(vao_id);
         glDrawElements(GL_TRIANGLES, number_of_indices, GL_UNSIGNED_SHORT, 0);

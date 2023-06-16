@@ -12,21 +12,22 @@
 #include "Camera.h"
 #include "Skybox.h"
 #include "TextureManager.h"
+#include "Node.h"
 
 namespace example
 {
 
     using glm::vec3;
-
     class View
     {
     private:
+
         Camera camera;
         Skybox skybox;
+        std::shared_ptr<Node> rootNode;
         GLuint program_id;
         int    width;
         int    height;
-
         float  angle_around_x;
         float  angle_around_y;
         float  angle_delta_x;
