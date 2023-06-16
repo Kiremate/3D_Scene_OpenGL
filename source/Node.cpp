@@ -3,13 +3,17 @@
 
 using namespace example;
 
-void Node::render()
-{
-    if (mesh)
-        mesh->render();
+void Node::render(GLuint model_view_matrix_id, const glm::mat4& parent_matrix) {
+    // Calculate the model-view matrix for this Node by applying this Node's transformation
+    // to the parent's transformation matrix.
+    glm::mat4 model_view_matrix = parent_matrix * transformation;
 
+    if (mesh)
+        mesh->render(model_view_matrix_id, model_view_matrix);
+
+    // Pass the model-view matrix to the children so they can apply their transformations
     for (auto& child : children)
-        child->render();
+        child->render(model_view_matrix_id, model_view_matrix);
 }
 
 void Node::addChild(std::shared_ptr<Node> child)

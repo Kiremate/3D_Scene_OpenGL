@@ -2,6 +2,8 @@
 #include "math.hpp"
 #include <vector>
 #include <memory>
+#include <glad/glad.h>
+
 using namespace example;
 class Mesh;
 
@@ -27,6 +29,6 @@ public:
 
     void addChild(std::shared_ptr<Node> child);
 
-    void render();
+    void render(GLuint model_view_matrix_id, const glm::mat4& parent_matrix);
  
 };

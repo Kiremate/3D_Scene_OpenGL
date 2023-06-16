@@ -124,7 +124,6 @@ namespace example
         // quad vertices for post-processing
         glGenVertexArrays(1, &quadVAO);
         glGenBuffers(1, &quadVBO);
-        glBindVertexArray(quadVAO);
         glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
         glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
         glEnableVertexAttribArray(0);
@@ -147,8 +146,6 @@ namespace example
         angle_around_x = angle_delta_x = 0.0;
         angle_around_y = angle_delta_y = 0.0;
         pointer_pressed = false;
-        load_mesh("../../shared/assets/stanford-bunny.obj");
-        //load_mesh("../../shared/assets/Jolyne.obj");
     }
 
     View::~View()
@@ -198,11 +195,7 @@ namespace example
         // Send the transformation to the shader
         glUniformMatrix4fv(model_view_matrix_id, 1, GL_FALSE, glm::value_ptr(model_view_matrix));
         // Render the root node (which will recursively render all children)
-        rootNode->render();
-        // Bind the VAO and draw the bunny
-        glBindVertexArray(vao_id);
-        glDrawElements(GL_TRIANGLES, number_of_indices, GL_UNSIGNED_SHORT, 0);
-        // now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
+        rootNode->render(model_view_matrix_id, glm::mat4(1.0f));
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -211,7 +204,6 @@ namespace example
         glBindVertexArray(quadVAO);
         glBindTexture(GL_TEXTURE_2D, textureColorbuffer); // use the color attachment texture as the texture of the quad plane
         glDrawArrays(GL_TRIANGLES, 0, 6);
-
     }
 
     void View::resize(int new_width, int new_height)
