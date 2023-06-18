@@ -3,17 +3,16 @@
 
 using namespace example;
 
-void Node::render(GLuint model_view_matrix_id, const glm::mat4& parent_matrix) {
-    // Calculate the model-view matrix for this Node by applying this Node's transformation
-    // to the parent's transformation matrix.
-    glm::mat4 model_view_matrix = parent_matrix * transformation;
-
-    if (mesh)
-        mesh->render(model_view_matrix_id, model_view_matrix);
-
-    // Pass the model-view matrix to the children so they can apply their transformations
-    for (auto& child : children)
+void Node::render(GLuint model_view_matrix_id, const glm::mat4& view_matrix) {
+    glm::mat4 model_view_matrix = view_matrix * transformation;
+    if (mesh) {
+        glBindVertexArray(mesh->getVaoId());
+        glUniformMatrix4fv(model_view_matrix_id, 1, GL_FALSE, glm::value_ptr(model_view_matrix));
+        mesh->render();
+    }
+    for (auto& child : children) {
         child->render(model_view_matrix_id, model_view_matrix);
+    }
 }
 
 void Node::addChild(std::shared_ptr<Node> child)

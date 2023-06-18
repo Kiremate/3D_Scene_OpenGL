@@ -13,7 +13,7 @@
 #include "Skybox.h"
 #include "TextureManager.h"
 #include "Node.h"
-
+#include "FrameBuffer.h"
 namespace example
 {
 
@@ -24,6 +24,7 @@ namespace example
 
         Camera camera;
         Skybox skybox;
+        FrameBuffer frameBuffer;
         std::shared_ptr<Node> rootNode;
         GLuint program_id;
         int    width;

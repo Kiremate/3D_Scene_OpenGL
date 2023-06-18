@@ -85,17 +85,19 @@ namespace example
     View::View(int width, int height)
         :
         skybox("../../shared/assets/sky-cube-map-"),
+        frameBuffer(width, height),
         angle(0)
     {
+        // Bind frame buffer
+        frameBuffer.Bind();
+
+
         glm::mat4 transformation = glm::mat4(1.f);
         transformation = glm::translate(transformation, glm::vec3(0.f, 0.f, -3.f));
         transformation = glm::rotate(transformation, angle, glm::vec3(0.f, 1.f, 0.f));
         rootNode = std::make_shared<Node>(transformation);
         std::shared_ptr<Mesh> bunnyMesh = std::make_shared<Mesh>("../../shared/assets/stanford-bunny.obj");
         rootNode->mesh = bunnyMesh;
-
-
-
 
         // Se establece la configuración básica:
         glEnable(GL_BLEND);
@@ -106,21 +108,7 @@ namespace example
         textureManager.loadTexture("texture1", "../../shared/assets/textures/baju_Text.jpg");
         textureManager.loadTexture("texture2", "../../shared/assets/textures/Hair_texture.png");
         textureManager.loadTexture("texture3", "../../shared/assets/textures/Skin.png");
-        // Framebuffer
-        // framebuffer configuration
-        glGenFramebuffers(1, &framebuffer);
-        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-        // create a color attachment texture
-        glGenTextures(1, &textureColorbuffer);
-        glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-            std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
+       
         // quad vertices for post-processing
         glGenVertexArrays(1, &quadVAO);
         glGenBuffers(1, &quadVBO);
@@ -141,7 +129,10 @@ namespace example
 
         model_view_matrix_id = glGetUniformLocation(program_id, "model_view_matrix");
         projection_matrix_id = glGetUniformLocation(program_id, "projection_matrix");
-
+        // We unbind the FrameBuffer
+        frameBuffer.Unbind();
+        // Post-processing...
+        glBindTexture(GL_TEXTURE_2D, frameBuffer.GetTextureBuffer());
         resize(width, height);
         angle_around_x = angle_delta_x = 0.0;
         angle_around_y = angle_delta_y = 0.0;
@@ -171,9 +162,9 @@ namespace example
 
     void View::render()
     {
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         // bind to framebuffer and draw scene as we normally would to color texture
-        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+        frameBuffer.Bind(); // Use FrameBuffer's Bind method instead of manual binding
+        glEnable(GL_DEPTH_TEST);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         // First, render the skybox
         skybox.render(camera);
@@ -191,18 +182,22 @@ namespace example
 
         // Combine the model and view transformations
         glm::mat4 model_view_matrix = camera.get_model_view_matrix() * model_matrix;
+        frameBuffer.Unbind(); // Use FrameBuffer's Unbind method instead of manual unbinding
 
         // Send the transformation to the shader
         glUniformMatrix4fv(model_view_matrix_id, 1, GL_FALSE, glm::value_ptr(model_view_matrix));
+
         // Render the root node (which will recursively render all children)
         rootNode->render(model_view_matrix_id, glm::mat4(1.0f));
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        frameBuffer.Unbind(); // Use FrameBuffer's Unbind method instead of manual unbinding
+
+        glDisable(GL_DEPTH_TEST);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // use the postprocessing shader
         glUseProgram(postprocess_program_id);
-        glBindVertexArray(quadVAO);
-        glBindTexture(GL_TEXTURE_2D, textureColorbuffer); // use the color attachment texture as the texture of the quad plane
+        glBindTexture(GL_TEXTURE_2D, frameBuffer.GetTextureBuffer()); // use the FrameBuffer's texture instead of the manually created one
         glDrawArrays(GL_TRIANGLES, 0, 6);
     }
 
@@ -314,92 +309,6 @@ namespace example
 #endif
 
         assert(false);
-    }
-
-    void View::load_mesh(const std::string& mesh_file_path)
-    {
-        Assimp::Importer importer;
-
-        auto scene = importer.ReadFile
-        (
-            mesh_file_path,
-            aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_SortByPType
-        );
-
-        // Si scene es un puntero nulo significa que el archivo no se pudo cargar con éxito:
-
-        if (scene && scene->mNumMeshes > 0)
-        {
-            // Para este ejemplo se coge la primera malla solamente:
-
-            auto mesh = scene->mMeshes[0];
-
-            size_t number_of_vertices = mesh->mNumVertices;
-
-            // Se generan índices para los VBOs del cubo:
-
-            glGenBuffers(VBO_COUNT, vbo_ids);
-            glGenVertexArrays(1, &vao_id);
-
-            // Se activa el VAO del cubo para configurarlo:
-
-            glBindVertexArray(vao_id);
-
-            // Se suben a un VBO los datos de coordenadas y se vinculan al VAO:
-
-            static_assert(sizeof(aiVector3D) == sizeof(fvec3), "aiVector3D should composed of three floats");
-
-            glBindBuffer(GL_ARRAY_BUFFER, vbo_ids[COORDINATES_VBO]);
-            glBufferData(GL_ARRAY_BUFFER, number_of_vertices * sizeof(aiVector3D), mesh->mVertices, GL_STATIC_DRAW);
-
-            glEnableVertexAttribArray(0);
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-
-            // El archivo del modelo 3D de ejemplo no guarda un color por cada vértice, por lo que se va
-            // a crear un array de colores aleatorios (tantos como vértices):
-
-            vector< vec3 > vertex_colors(number_of_vertices);
-
-            for (auto& color : vertex_colors)
-            {
-                color = random_color();
-            }
-
-            // Se suben a un VBO los datos de color y se vinculan al VAO:
-
-            glBindBuffer(GL_ARRAY_BUFFER, vbo_ids[COLORS_VBO]);
-            glBufferData(GL_ARRAY_BUFFER, vertex_colors.size() * sizeof(vec3), vertex_colors.data(), GL_STATIC_DRAW);
-
-            glEnableVertexAttribArray(1);
-            glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
-
-            // Los índices en ASSIMP están repartidos en "faces", pero OpenGL necesita un array de enteros
-            // por lo que vamos a mover los índices de las "faces" a un array de enteros:
-
-            // Se asume que todas las "faces" son triángulos (revisar el flag aiProcess_Triangulate arriba).
-
-            number_of_indices = mesh->mNumFaces * 3;
-
-            vector< GLshort > indices(number_of_indices);
-
-            auto vertex_index = indices.begin();
-
-            for (unsigned i = 0; i < mesh->mNumFaces; ++i)
-            {
-                auto& face = mesh->mFaces[i];
-
-                assert(face.mNumIndices == 3);
-
-                *vertex_index++ = face.mIndices[0];
-                *vertex_index++ = face.mIndices[1];
-                *vertex_index++ = face.mIndices[2];
-            }
-
-            // Se suben a un EBO los datos de índices:
-
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_ids[INDICES_EBO]);
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLshort), indices.data(), GL_STATIC_DRAW);
-        }
     }
 
     vec3 View::random_color()

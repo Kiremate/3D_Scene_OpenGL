@@ -15,11 +15,10 @@ Mesh::~Mesh() {
 	glDeleteBuffers(VBO_COUNT, vbo_ids);
 }
 
-void Mesh::render(GLuint model_view_matrix_id, const glm::mat4& model_view_matrix) const {
-	glBindVertexArray(vao_id);
-	glUniformMatrix4fv(model_view_matrix_id, 1, GL_FALSE, glm::value_ptr(model_view_matrix));
+void Mesh::render() const {
 	glDrawElements(GL_TRIANGLES, number_of_indices, GL_UNSIGNED_SHORT, 0);
 }
+
 
 void Mesh::load_mesh(const std::string& mesh_file_path) {
 	Assimp::Importer importer;

@@ -13,8 +13,10 @@ class Mesh
 public:
     Mesh(const std::string& filePath);
     ~Mesh();
-    void render(GLuint model_view_matrix_id, const glm::mat4& model_view_matrix)  const;
+    void render() const;
     void load_mesh(const std::string& mesh_file_path);
+    // Getter
+    GLuint getVaoId() const { return vao_id; } 
 
 private:
     GLuint vao_id;
