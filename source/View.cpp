@@ -102,50 +102,73 @@ namespace example
     }
     void View::render()
     {
-        // Render to the framebuffer
-        frameBuffer.Bind();
+        beginRender();
+        renderSkybox();
+        renderOpaqueObjects();
+        if (post_processing_enabled)
+        {
+            endRender();
+            handlePostProcessing();
+        }
+        resetOpenGLState();
+    }
+    void View::beginRender()
+    {
+        if (post_processing_enabled)
+        {
+            frameBuffer.Bind();
+        }
+        else
+        {
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        }
+
         glEnable(GL_DEPTH_TEST);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        // Render the skybox here
+    }
+    void View::renderSkybox()
+    {
         skybox.render(camera);
-
-        // Render opaque objects
+    }
+    void View::renderOpaqueObjects()
+    {
         glDisable(GL_BLEND);
         rootNode->render(model_view_matrix_id, glm::mat4(1.0f));
-
-        // Done rendering to the framebuffer
-        frameBuffer.Unbind();
-
-        // Now we apply post-processing on the rendered scene (which is on our framebuffer texture)
-        // and draw the result to the default framebuffer
-
-        // Clear the default framebuffer
+    }
+    void View::renderTransparentObjects()
+    {
+        glEnable(GL_BLEND);
+        // Render your transparent objects here
+    }
+    void View::endRender()
+    {
+        if (post_processing_enabled)
+        {
+            frameBuffer.Unbind();
+        }
+    }
+    void View::handlePostProcessing()
+    {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // Use post-processing shader
         glUseProgram(postProcess.getProgramId());
 
-        // Activate texture unit and bind the texture we want to post-process
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, frameBuffer.GetTextureBuffer());
 
-        // Get uniform location for "screenTexture" and set it to 0
         GLint texLoc = glGetUniformLocation(postProcess.getProgramId(), "screenTexture");
         glUniform1i(texLoc, 0);
 
-        // Draw the post-processing quad
         glBindVertexArray(postProcess.getQuadVAO());
         glDrawArrays(GL_TRIANGLES, 0, 6);
-
-        // Always good practice to set everything back to defaults once configured.
+    }
+    void View::resetOpenGLState()
+    {
         glBindVertexArray(0);
         glBindTexture(GL_TEXTURE_2D, 0);
         glUseProgram(0);
     }
-
-
     void View::resize(int new_width, int new_height)
     {
         width = new_width;
@@ -158,8 +181,12 @@ namespace example
 
     void View::on_key(int key_code)
     {
+        // Toggle post-processing when the 'P' key is pressed
+        if (key_code == 15 || key_code == 'p')
+        {
+            post_processing_enabled = !post_processing_enabled;
+        }
     }
-
     void View::on_drag(int pointer_x, int pointer_y)
     {
         if (pointer_pressed)

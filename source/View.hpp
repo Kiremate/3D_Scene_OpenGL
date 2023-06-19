@@ -44,8 +44,15 @@ namespace example
         static const std::string fragment_shader_code;
         GLint   model_view_matrix_id;
         GLint   projection_matrix_id;
-
+        bool post_processing_enabled = true;
         float   angle;
+        void beginRender();
+        void renderSkybox();
+        void renderOpaqueObjects();
+        void renderTransparentObjects();
+        void endRender();
+        void handlePostProcessing();
+        void resetOpenGLState();
 
     public:
 

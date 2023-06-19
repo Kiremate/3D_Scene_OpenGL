@@ -16,9 +16,10 @@ Mesh::~Mesh() {
 }
 
 void Mesh::render() const {
+	glBindVertexArray(vao_id);
 	glDrawElements(GL_TRIANGLES, number_of_indices, GL_UNSIGNED_SHORT, 0);
+	glBindVertexArray(0);
 }
-
 
 void Mesh::load_mesh(const std::string& mesh_file_path) {
 	Assimp::Importer importer;
