@@ -18,7 +18,6 @@ namespace example
 {
 
     const string View::vertex_shader_code =
-
         "#version 330\n"
         ""
         "uniform mat4 model_view_matrix;"
@@ -26,26 +25,34 @@ namespace example
         ""
         "layout (location = 0) in vec3 vertex_coordinates;"
         "layout (location = 1) in vec3 vertex_color;"
+        "layout (location = 2) in vec2 vertex_texture_coordinates;"
         ""
         "out vec3 front_color;"
+        "out vec2 front_texture_coordinates;" // <---- add this line
         ""
         "void main()"
         "{"
         "   gl_Position = projection_matrix * model_view_matrix * vec4(vertex_coordinates, 1.0);"
         "   front_color = vertex_color;"
+        "   front_texture_coordinates = vertex_texture_coordinates;" // <---- and this line
         "}";
+
 
     const string View::fragment_shader_code =
 
         "#version 330\n"
         ""
         "in  vec3    front_color;"
+        "in  vec2    front_texture_coordinates;" 
+        "uniform sampler2D textureSampler;"
         "out vec4 fragment_color;"
         ""
         "void main()"
         "{"
-        "    fragment_color = vec4(front_color, 0.5);"
+        "    vec4 textureColor = texture(textureSampler, front_texture_coordinates);" // <---- modify this line
+        "    fragment_color = textureColor;"
         "}";
+
 
 
     View::View(int width, int height)
@@ -68,10 +75,7 @@ namespace example
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
         glClearColor(.1f, .1f, .1f, 1.f);
-        textureManager.loadTexture("texture1", "../../shared/assets/textures/baju_Text.jpg");
-        textureManager.loadTexture("texture2", "../../shared/assets/textures/Hair_texture.png");
-        textureManager.loadTexture("texture3", "../../shared/assets/textures/Skin.png");
-
+        textureManager.loadTexture("texture1", "../../shared/assets/uv-checker.png");
         program_id = ShaderUtility::CompileShaders(vertex_shader_code, fragment_shader_code);
         model_view_matrix_id = glGetUniformLocation(program_id, "model_view_matrix");
         projection_matrix_id = glGetUniformLocation(program_id, "projection_matrix");
@@ -87,7 +91,7 @@ namespace example
     }
     void View::update()
     {
-        angle += 0.01f;
+        angle += 5.01f;
         angle_around_x += angle_delta_x;
         angle_around_y += angle_delta_y;
 
@@ -99,12 +103,19 @@ namespace example
 
         camera.set_target(0, 0, -1);
         camera.rotate(camera_rotation);
+
+        // Reset and update the transformation matrix for the bunny mesh
+        rootNode->reset_transformation();
+        rootNode->translate(glm::vec3(0.f, 0.f, -3.f));
+        rootNode->rotate(angle, glm::vec3(0.f, 50.f, 0.f));
     }
     void View::render()
     {
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         beginRender();
         renderSkybox();
         renderOpaqueObjects();
+        renderTransparentObjects();  
         if (post_processing_enabled)
         {
             endRender();
@@ -114,6 +125,8 @@ namespace example
     }
     void View::beginRender()
     {
+        glEnable(GL_DEPTH_TEST);
+
         if (post_processing_enabled)
         {
             frameBuffer.Bind();
@@ -133,13 +146,27 @@ namespace example
     void View::renderOpaqueObjects()
     {
         glDisable(GL_BLEND);
-        rootNode->render(model_view_matrix_id, glm::mat4(1.0f));
+
+        glUseProgram(program_id); 
+
+        glm::mat4 camera_view_matrix = camera.get_model_view_matrix();
+        glUniformMatrix4fv(model_view_matrix_id, 1, GL_FALSE, glm::value_ptr(camera_view_matrix));
+
+        glm::mat4 projection_matrix = camera.get_projection_matrix();
+        glUniformMatrix4fv(projection_matrix_id, 1, GL_FALSE, glm::value_ptr(projection_matrix));
+
+        GLuint textureId = textureManager.getTexture("texture1");
+        rootNode->render(model_view_matrix_id, camera_view_matrix, textureId);
     }
+
     void View::renderTransparentObjects()
     {
         glEnable(GL_BLEND);
         // Render your transparent objects here
+        glm::mat4 camera_view_matrix = camera.get_model_view_matrix();
+        //rootNode->render(model_view_matrix_id, camera_view_matrix);
     }
+
     void View::endRender()
     {
         if (post_processing_enabled)

@@ -14,6 +14,7 @@ public:
     Mesh(const std::string& filePath);
     ~Mesh();
     void render() const;
+    void render(GLuint textureId) const;
     void load_mesh(const std::string& mesh_file_path);
     // Getter
     GLuint getVaoId() const { return vao_id; } 

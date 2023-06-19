@@ -29,6 +29,7 @@ public:
 
     void addChild(std::shared_ptr<Node> child);
 
-    void render(GLuint model_view_matrix_id, const glm::mat4& parent_matrix);
- 
+    void render(GLuint model_view_matrix_id, const glm::mat4& view_matrix, GLuint textureId);
+
+    void reset_transformation();
 };

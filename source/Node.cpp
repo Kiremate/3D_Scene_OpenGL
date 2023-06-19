@@ -3,17 +3,18 @@
 
 using namespace example;
 
-void Node::render(GLuint model_view_matrix_id, const glm::mat4& view_matrix) {
+void Node::render(GLuint model_view_matrix_id, const glm::mat4& view_matrix, GLuint textureId) {
     glm::mat4 model_view_matrix = view_matrix * transformation;
     if (mesh) {
         glBindVertexArray(mesh->getVaoId());
         glUniformMatrix4fv(model_view_matrix_id, 1, GL_FALSE, glm::value_ptr(model_view_matrix));
-        mesh->render();
+        mesh->render(textureId);
     }
     for (auto& child : children) {
-        child->render(model_view_matrix_id, model_view_matrix);
+        child->render(model_view_matrix_id, model_view_matrix, textureId);
     }
 }
+
 
 void Node::addChild(std::shared_ptr<Node> child)
 {
@@ -34,4 +35,8 @@ void Node::rotate(float angle, const glm::vec3& axis)
 void Node::translate(const glm::vec3& offset)
 {
     transformation = glm::translate(transformation, offset);
+}
+
+void Node::reset_transformation() {
+    transformation = glm::mat4(1.0f);
 }
