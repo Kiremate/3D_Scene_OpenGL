@@ -39,19 +39,20 @@ namespace example
 
 
     const string View::fragment_shader_code =
-
         "#version 330\n"
         ""
         "in  vec3    front_color;"
-        "in  vec2    front_texture_coordinates;" 
+        "in  vec2    front_texture_coordinates;"
         "uniform sampler2D textureSampler;"
+        "uniform float transparency;"
         "out vec4 fragment_color;"
         ""
         "void main()"
         "{"
-        "    vec4 textureColor = texture(textureSampler, front_texture_coordinates);" // <---- modify this line
-        "    fragment_color = textureColor;"
+        "    vec4 textureColor = texture(textureSampler, front_texture_coordinates);"
+        "    fragment_color = vec4(textureColor.rgb, transparency);" // <---- modify this line
         "}";
+
 
 
 
@@ -63,12 +64,23 @@ namespace example
         postProcess(frameBuffer)
     {
         postProcess.Init(); // call Init function to set up VAO and VBO
+        // The bunny
         glm::mat4 transformation = glm::mat4(1.f);
         transformation = glm::translate(transformation, glm::vec3(0.f, 0.f, -3.f));
         transformation = glm::rotate(transformation, angle, glm::vec3(0.f, 1.f, 0.f));
         rootNode = std::make_shared<Node>(transformation);
         std::shared_ptr<Mesh> bunnyMesh = std::make_shared<Mesh>("../../shared/assets/stanford-bunny.obj");
         rootNode->mesh = bunnyMesh;
+        // The barrel
+        std::shared_ptr<Mesh> barrelMesh = std::make_shared<Mesh>("../../shared/assets/barrel.obj");
+        auto barrelNode = std::make_shared<Node>();
+        barrelNode->mesh = barrelMesh;
+        rootNode->addChild(barrelNode);
+
+        barrelNode->scale(vec3(0.5f));  // Scale the barrel down.
+        barrelNode->rotate(90.0f, vec3(0.0f, 1.0f, 0.0f));  // Rotate the barrel.
+        barrelNode->translate(vec3(1.0f, 0.0f, 0.0f));  // Move the barrel to the right.
+
 
         // Se establece la configuración básica:
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

@@ -18,8 +18,10 @@ public:
     void load_mesh(const std::string& mesh_file_path);
     // Getter
     GLuint getVaoId() const { return vao_id; } 
-
+    void setName(const std::string& name) { meshName = name; }
+    std::string getName() const { return meshName; }
 private:
+    std::string meshName;
     GLuint vao_id;
     GLuint vbo_ids[VBO_COUNT];
     GLuint number_of_indices;

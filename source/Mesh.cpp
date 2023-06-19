@@ -3,6 +3,7 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+
 Mesh::Mesh(const std::string& filePath) {
 	glGenBuffers(VBO_COUNT, vbo_ids);
 	glGenVertexArrays(1, &vao_id);
@@ -23,9 +24,10 @@ void Mesh::render(GLuint textureId) const {
 	glBindTexture(GL_TEXTURE_2D, textureId);
 	glBindVertexArray(vao_id);
 	glDrawElements(GL_TRIANGLES, number_of_indices, GL_UNSIGNED_SHORT, 0);
-	glBindVertexArray(0);
-	glBindTexture(GL_TEXTURE_2D, 0);  // Unbind the texture
+	glBindVertexArray(0); 
+	glBindTexture(GL_TEXTURE_2D, 0); 
 }
+
 void Mesh::load_mesh(const std::string& mesh_file_path) {
 	Assimp::Importer importer;
 
