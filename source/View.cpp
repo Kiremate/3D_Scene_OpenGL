@@ -25,6 +25,34 @@ namespace example
         ""
         "layout (location = 0) in vec3 vertex_coordinates;"
         "layout (location = 1) in vec3 vertex_color;"
+        ""
+        "out vec3 front_color;"
+        ""
+        "void main()"
+        "{"
+        "   gl_Position = projection_matrix * model_view_matrix * vec4(vertex_coordinates, 1.0);"
+        "   front_color = vertex_color;"
+        "}";
+
+    const string View::fragment_shader_code =
+        "#version 330\n"
+        ""
+        "in vec3 front_color;"
+        "out vec4 fragment_color;"
+        ""
+        "void main()"
+        "{"
+        "    fragment_color = vec4(front_color, 0.5);"
+        "}";
+
+    const string View::vertex_shader_code_texture =
+        "#version 330\n"
+        ""
+        "uniform mat4 model_view_matrix;"
+        "uniform mat4 projection_matrix;"
+        ""
+        "layout (location = 0) in vec3 vertex_coordinates;"
+        "layout (location = 1) in vec3 vertex_color;"
         "layout (location = 2) in vec2 vertex_texture_coordinates;"
         ""
         "out vec3 front_color;"
@@ -38,22 +66,20 @@ namespace example
         "}";
 
 
-    const string View::fragment_shader_code =
+    const string View::fragment_shader_code_texture =
+
         "#version 330\n"
         ""
         "in  vec3    front_color;"
         "in  vec2    front_texture_coordinates;"
         "uniform sampler2D textureSampler;"
-        "uniform float transparency;"
         "out vec4 fragment_color;"
         ""
         "void main()"
         "{"
-        "    vec4 textureColor = texture(textureSampler, front_texture_coordinates);"
-        "    fragment_color = vec4(textureColor.rgb, transparency);" // <---- modify this line
+        "    vec4 textureColor = texture(textureSampler, front_texture_coordinates);" // <---- modify this line
+        "    fragment_color = textureColor;"
         "}";
-
-
 
 
     View::View(int width, int height)
@@ -69,17 +95,26 @@ namespace example
         transformation = glm::translate(transformation, glm::vec3(0.f, 0.f, -3.f));
         transformation = glm::rotate(transformation, angle, glm::vec3(0.f, 1.f, 0.f));
         rootNode = std::make_shared<Node>(transformation);
-        std::shared_ptr<Mesh> bunnyMesh = std::make_shared<Mesh>("../../shared/assets/stanford-bunny.obj");
-        rootNode->mesh = bunnyMesh;
+       /* std::shared_ptr<Mesh> bunnyMesh = std::make_shared<Mesh>("../../shared/assets/stanford-bunny.obj");
+        rootNode->mesh = bunnyMesh;*/
         // The barrel
         std::shared_ptr<Mesh> barrelMesh = std::make_shared<Mesh>("../../shared/assets/barrel.obj");
         auto barrelNode = std::make_shared<Node>();
         barrelNode->mesh = barrelMesh;
         rootNode->addChild(barrelNode);
 
-        barrelNode->scale(vec3(0.5f));  // Scale the barrel down.
+        barrelNode->scale(vec3(1.5f));  // Scale the barrel up.
         barrelNode->rotate(90.0f, vec3(0.0f, 1.0f, 0.0f));  // Rotate the barrel.
         barrelNode->translate(vec3(1.0f, 0.0f, 0.0f));  // Move the barrel to the right.
+        // The bunny with texture
+        std::shared_ptr<Mesh> bunnyMeshTexture = std::make_shared<Mesh>("../../shared/assets/stanford-bunny.obj");
+        bunnyNodeTexture = std::make_shared<Node>();
+        bunnyNodeTexture->mesh = bunnyMeshTexture;
+        rootNode->addChild(bunnyNodeTexture);
+
+        bunnyNodeTexture->scale(vec3(0.25f)); // Scale the bunny down further.
+        bunnyNodeTexture->rotate(90.0f, vec3(0.0f, 1.0f, 0.0f)); // Rotate the bunny.
+        bunnyNodeTexture->translate(vec3(4.0f, 0.0f, 0.0f)); // Move the bunny further to the right.
 
 
         // Se establece la configuración básica:
@@ -87,8 +122,10 @@ namespace example
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
         glClearColor(.1f, .1f, .1f, 1.f);
-        textureManager.loadTexture("texture1", "../../shared/assets/uv-checker.png");
+        textureManager.loadTexture("textureBunny", "../../shared/assets/uv-checker.png");
         program_id = ShaderUtility::CompileShaders(vertex_shader_code, fragment_shader_code);
+        program_id_texture = ShaderUtility::CompileShaders(vertex_shader_code_texture, fragment_shader_code_texture);
+
         model_view_matrix_id = glGetUniformLocation(program_id, "model_view_matrix");
         projection_matrix_id = glGetUniformLocation(program_id, "projection_matrix");
 
@@ -103,7 +140,7 @@ namespace example
     }
     void View::update()
     {
-        angle += 5.01f;
+        angle += 1.01f;
         angle_around_x += angle_delta_x;
         angle_around_y += angle_delta_y;
 
@@ -159,7 +196,8 @@ namespace example
     {
         glDisable(GL_BLEND);
 
-        glUseProgram(program_id); 
+        // Use the shader program that uses textures
+        glUseProgram(program_id_texture);
 
         glm::mat4 camera_view_matrix = camera.get_model_view_matrix();
         glUniformMatrix4fv(model_view_matrix_id, 1, GL_FALSE, glm::value_ptr(camera_view_matrix));
@@ -167,17 +205,33 @@ namespace example
         glm::mat4 projection_matrix = camera.get_projection_matrix();
         glUniformMatrix4fv(projection_matrix_id, 1, GL_FALSE, glm::value_ptr(projection_matrix));
 
-        GLuint textureId = textureManager.getTexture("texture1");
-        rootNode->render(model_view_matrix_id, camera_view_matrix, textureId);
+        GLuint textureBunnyId = textureManager.getTexture("textureBunny");
+
+        bunnyNodeTexture->render(model_view_matrix_id, camera_view_matrix, textureBunnyId);
     }
+
 
     void View::renderTransparentObjects()
     {
         glEnable(GL_BLEND);
-        // Render your transparent objects here
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        glUseProgram(program_id);
+
+        // Before rendering your objects:
+        GLint transparency_location = glGetUniformLocation(program_id, "transparency");
+        // When rendering your transparent objects:
+        glUniform1f(transparency_location, 0.5f); // for example, 0.5f for 50% transparency
+
         glm::mat4 camera_view_matrix = camera.get_model_view_matrix();
-        //rootNode->render(model_view_matrix_id, camera_view_matrix);
+        glUniformMatrix4fv(model_view_matrix_id, 1, GL_FALSE, glm::value_ptr(camera_view_matrix));
+
+        glm::mat4 projection_matrix = camera.get_projection_matrix();
+        glUniformMatrix4fv(projection_matrix_id, 1, GL_FALSE, glm::value_ptr(projection_matrix));
+
+        rootNode->render(model_view_matrix_id, camera_view_matrix);
     }
+
 
     void View::endRender()
     {
@@ -212,9 +266,7 @@ namespace example
     {
         width = new_width;
         height = new_height;
-
         camera.set_ratio(float(width) / height);
-
         glViewport(0, 0, width, height);
     }
 

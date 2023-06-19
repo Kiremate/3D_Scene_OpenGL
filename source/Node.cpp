@@ -15,7 +15,17 @@ void Node::render(GLuint model_view_matrix_id, const glm::mat4& view_matrix, GLu
     }
 }
 
-
+void Node::render(GLuint model_view_matrix_id, const glm::mat4& view_matrix) {
+    glm::mat4 model_view_matrix = view_matrix * transformation;
+    if (mesh) {
+        glBindVertexArray(mesh->getVaoId());
+        glUniformMatrix4fv(model_view_matrix_id, 1, GL_FALSE, glm::value_ptr(model_view_matrix));
+        mesh->render();
+    }
+    for (auto& child : children) {
+        child->render(model_view_matrix_id, model_view_matrix);
+    }
+}
 void Node::addChild(std::shared_ptr<Node> child)
 {
     child->parent = shared_from_this();

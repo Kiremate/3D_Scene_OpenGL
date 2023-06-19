@@ -28,7 +28,9 @@ namespace example
         Skybox skybox;
         FrameBuffer frameBuffer;
         std::shared_ptr<Node> rootNode;
+        std::shared_ptr<Node> bunnyNodeTexture;
         GLuint program_id;
+        GLuint program_id_texture;
         PostProcess postProcess;
         int    width;
         int    height;
@@ -41,7 +43,9 @@ namespace example
         int    last_pointer_y;
         TextureManager textureManager;
         static const std::string   vertex_shader_code;
-        static const std::string fragment_shader_code;
+        static const std::string fragment_shader_code;  
+        static const std::string   vertex_shader_code_texture;
+        static const std::string fragment_shader_code_texture;
         GLint   model_view_matrix_id;
         GLint   projection_matrix_id;
         bool post_processing_enabled = true;
